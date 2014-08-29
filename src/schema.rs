@@ -13,9 +13,9 @@ pub enum SchemaError {
     DecodeError(String),
 }
 
-pub trait Codec<E> {
-    fn encode(&self, w: &mut Writer) -> Result<(), E>;
-    fn decode(r: &str) -> Result<Self, E>;
+pub trait Codec<T> {
+    fn encode(&self, value: &T, w: &mut Writer) -> SchemaResult<()>;
+    fn decode(&self, r: &str) -> SchemaResult<T>;
 }
 
 macro_rules! try_encode(
@@ -36,16 +36,18 @@ macro_rules! parse_field(
     )
 )
 
-impl Codec<SchemaError> for DateTime<FixedOffset> {
-    fn encode(&self, w: &mut Writer) -> SchemaResult<()> {
-        let dt = self.format("%Y-%m-%dT%H:%M:%S");
+struct RFC3339;
+
+impl Codec<DateTime<FixedOffset>> for RFC3339 {
+    fn encode(&self, value: &DateTime<FixedOffset>, w: &mut Writer) -> SchemaResult<()> {
+        let dt = value.format("%Y-%m-%dT%H:%M:%S");
         try_encode!(write!(w, "{}", dt));
-        let nsec = self.nanosecond();
+        let nsec = value.nanosecond();
         if nsec != 0 {
             let nsec = format!("{:06}", nsec);
             try_encode!(write!(w, ".{}", nsec.as_slice().trim_right_chars('0')));
         }
-        let off_d = self.offset().local_minus_utc();
+        let off_d = value.offset().local_minus_utc();
         if off_d.is_zero() {
             try_encode!(write!(w, "Z"));
         } else {
@@ -55,7 +57,7 @@ impl Codec<SchemaError> for DateTime<FixedOffset> {
         Ok(())
     }
 
-    fn decode(r: &str) -> SchemaResult<DateTime<FixedOffset>> {
+    fn decode(&self, r: &str) -> SchemaResult<DateTime<FixedOffset>> {
         let pattern = regex!(concat!(
             r#"^\s*"#,
             r#"(?P<year>\d{4})-(?P<month>0[1-9]|1[012])-(?P<day>0[1-9]|[12]\d|3[01])"#,
@@ -105,6 +107,7 @@ pub trait Mergeable {
 mod test {
     use super::SchemaError;
     use super::Codec;
+    use super::RFC3339;
     use std::io::MemWriter;
     use std::str;
     use chrono::{DateTime, FixedOffset};
@@ -136,21 +139,21 @@ mod test {
     #[test]
     fn test_rfc3339_decode() {
         for &(rfc3339_str, tm) in sample_data().iter() {
-            let parsed: DateTime<_> = Codec::<SchemaError>::decode(rfc3339_str).unwrap();
+            let parsed = RFC3339.decode(rfc3339_str).unwrap();
             assert_eq!(parsed, tm);
         }
     }
 
-    fn to_string<T: Codec<E>, E>(value: T) -> String {
+    fn to_string<T, C: Codec<T>>(codec: C, value: T) -> String {
         let mut w = MemWriter::new();
-        value.encode(&mut w);
+        codec.encode(&value, &mut w);
         str::from_utf8(w.unwrap().as_slice()).unwrap().into_string()
     }
 
     #[test]
     fn test_rfc3339_encode() {
         for &(rfc3339_str, dt) in sample_data().iter() {
-            assert_eq!(to_string(dt).as_slice(), rfc3339_str);
+            assert_eq!(to_string(RFC3339, dt).as_slice(), rfc3339_str);
             // TODO: assert (Rfc3339(prefer_utc=True).encode(dt) == codec.encode(dt.astimezone(utc)))
         }
     }
@@ -173,7 +176,7 @@ def test_rfc3339_with_white_spaces():
             2003-12-13T18:30:02+01:00
         "#;
         let dt = FixedOffset::east(1 * 60 * 60).ymd(2003, 12, 13).and_hms(18, 30, 2);
-        let decoded_dt: DateTime<_> = Codec::<SchemaError>::decode(rfc_str).unwrap();
+        let decoded_dt = RFC3339.decode(rfc_str).unwrap();
         assert_eq!(decoded_dt, dt);
     }
 }
