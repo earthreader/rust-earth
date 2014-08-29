@@ -21,6 +21,12 @@ impl Element {
             text: "".into_string(),
         }
     }
+
+    pub fn get<'a>(&'a self, key: &str) -> Option<&'a str> {
+        self.attributes.iter()
+            .find(|&attr| attr.name.local_name.as_slice() == key)
+            .map(|e| e.value.as_slice())
+    }
 }
 
 // pub type ParseResult<T> = Result<T, ParseError>;
@@ -39,7 +45,6 @@ type ChildrenMap<R> = HashMap<String, Vec<R>>;
 type OnStartHandler<T> = |&Element, &mut T|: 'static;
 type ParserFn<T, R> = fn(&Element, ChildrenMap<R>, T) -> R;
 
-#[deriving(Clone)]
 pub struct Parser<T, R> {
     attr_name: String,
     on_start: Option<RefCell<OnStartHandler<T>>>,

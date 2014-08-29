@@ -1,5 +1,6 @@
 use std::collections::hashmap::HashMap;
 
+#[deriving(Clone)]
 pub struct Element {
     pub ty: String,
     pub fields: HashMap<String, ElementValue>,
@@ -11,6 +12,7 @@ impl Element {
     }
 }
 
+#[deriving(Clone)]
 pub enum ElementValue {
     Str(String), Elem(Element)
 }
