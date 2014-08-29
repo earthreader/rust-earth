@@ -6,6 +6,7 @@ extern crate regex_macros;
 extern crate regex;
 extern crate time;
 
+extern crate chrono;
 extern crate xml;
 
 pub mod feed;

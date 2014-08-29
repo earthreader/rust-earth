@@ -12,3 +12,6 @@ git = "https://github.com/netvl/rust-xml.git"
 
 [dependencies.http]
 git = "https://github.com/chris-morgan/rust-http.git"
+
+[dependencies.chrono]
+git = "https://github.com/lifthrasiir/rust-chrono.git"

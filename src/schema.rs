@@ -1,4 +1,7 @@
-use time;
+use std::num::{Zero, div_rem};
+
+use chrono::{DateTime, FixedOffset};
+use chrono::{Timelike, Offset};
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
 
@@ -15,6 +18,10 @@ pub trait Codec<E> {
     fn decode(r: &str) -> Result<Self, E>;
 }
 
+macro_rules! try_encode(
+    ($e:expr) => (match $e { Ok(v) => v, Err(_e) => return Err(EncodeError) })
+)
+
 macro_rules! try_opt(
     ($e:expr, $msg:expr) => (match $e { Some(e) => e, None => return Err(DecodeError($msg)) })
 )
@@ -29,16 +36,26 @@ macro_rules! parse_field(
     )
 )
 
-impl Codec<SchemaError> for time::Tm {
+impl Codec<SchemaError> for DateTime<FixedOffset> {
     fn encode(&self, w: &mut Writer) -> SchemaResult<()> {
-        let dt = self.rfc3339();
-        match write!(w, "{}", dt) {
-            Ok(_) => Ok(()),
-            Err(_e) => Err(EncodeError),
+        let dt = self.format("%Y-%m-%dT%H:%M:%S");
+        try_encode!(write!(w, "{}", dt));
+        let nsec = self.nanosecond();
+        if nsec != 0 {
+            let nsec = format!("{:06}", nsec);
+            try_encode!(write!(w, ".{}", nsec.as_slice().trim_right_chars('0')));
         }
+        let off_d = self.offset().local_minus_utc();
+        if off_d.is_zero() {
+            try_encode!(write!(w, "Z"));
+        } else {
+            let (h, m) = div_rem(off_d.num_minutes(), 60);
+            try_encode!(write!(w, "{h:+03d}:{m:02d}", h=h, m=m));
+        }
+        Ok(())
     }
 
-    fn decode(r: &str) -> SchemaResult<time::Tm> {
+    fn decode(r: &str) -> SchemaResult<DateTime<FixedOffset>> {
         let pattern = regex!(concat!(
             r#"^\s*"#,
             r#"(?P<year>\d{4})-(?P<month>0[1-9]|1[012])-(?P<day>0[1-9]|[12]\d|3[01])"#,
@@ -53,36 +70,29 @@ impl Codec<SchemaError> for time::Tm {
             None => { return Err(DecodeError(format!("\"{}\" is not valid RFC 3339 date time string", r))); }
             Some(c) => c,
         };
-        let tzinfo = if caps.name("tz_offset").len() > 0 {
+        let offset = if caps.name("tz_offset").len() > 0 {
             let tz_hour: i32 = from_str(caps.name("tz_offset_hour")).unwrap();
             let tz_minute = from_str(caps.name("tz_offset_minute")).unwrap();
             let tz_sign = if caps.name("tz_offset_sign") == "+" { 1 } else { -1 };
-            tz_sign * (tz_hour * 60 + tz_minute)
+            FixedOffset::east(tz_sign * (tz_hour * 60 + tz_minute) * 60)
         } else {
-            0  // UTC
+            FixedOffset::east(0)  // UTC
         };
         let mut microsecond = caps.name("microsecond").to_string();
         for _ in range(0, 6 - microsecond.len()) {
             microsecond.push_char('0');
         }
-        let tm = time::Tm {
-            tm_year: { let y: i32 = parse_field!(caps, "year"); y - 1900 },
-            tm_mon: { let m: i32 = parse_field!(caps, "month"); m - 1 },
-            tm_mday: parse_field!(caps, "day"),
-            tm_yday: 0,  // TODO
-            tm_wday: 0,  // TODO
-            tm_hour: parse_field!(caps, "hour"),
-            tm_min: parse_field!(caps, "minute"),
-            tm_sec: parse_field!(caps, "second"),
-            tm_isdst: 0,  // TODO
-            tm_gmtoff: tzinfo * 60,
-            tm_nsec: {
-                let msec: i32 = try_opt!(from_str(microsecond.as_slice()),
-                                         format!("invalid value for microsecond: {}", microsecond));
-                msec * 1000
-            },
-        };
-        Ok(tm)
+        let dt = offset.ymd(
+                parse_field!(caps, "year"),
+                parse_field!(caps, "month"),
+                parse_field!(caps, "day"))
+            .and_hms_micro(
+                parse_field!(caps, "hour"),
+                parse_field!(caps, "minute"),
+                parse_field!(caps, "second"),
+                try_opt!(from_str(microsecond.as_slice()),
+                         format!("invalid value for microsecond: {}", microsecond)));
+        Ok(dt)
     }
 }
 
@@ -97,30 +107,21 @@ mod test {
     use super::Codec;
     use std::io::MemWriter;
     use std::str;
-    use time;
+    use chrono::{DateTime, FixedOffset};
+    use chrono::{Offset};
 
-    static sample_data: &'static [(&'static str, time::Tm)] = &[
-        ("2005-07-31T12:29:29Z",
-         time::Tm { tm_year: 2005 - 1900, tm_mon: 6, tm_mday: 31,
-                    tm_yday: 0, tm_wday: 0,  // dummy
-                    tm_hour: 12, tm_min: 29, tm_sec: 29, tm_nsec: 0,
-                    tm_isdst: 0, tm_gmtoff: 0 }),
-        ("2003-12-13T18:30:02.25Z",
-         time::Tm { tm_year: 2003 - 1900, tm_mon: 11, tm_mday: 13,
-                    tm_yday: 0, tm_wday: 0,  // dummy
-                    tm_hour: 18, tm_min: 30, tm_sec: 2, tm_nsec: 250000 * 1000,
-                    tm_isdst: 0, tm_gmtoff: 0 }),
-        ("2003-12-13T18:30:02+01:00",
-         time::Tm { tm_year: 2003 - 1900, tm_mon: 11, tm_mday: 13,
-                    tm_yday: 0, tm_wday: 0,  // dummy
-                    tm_hour: 18, tm_min: 30, tm_sec: 2, tm_nsec: 0,
-                    tm_isdst: 0, tm_gmtoff: 1 * 60 * 60 }),
-        ("2003-12-13T18:30:02.25+01:00",
-         time::Tm { tm_year: 2003 - 1900, tm_mon: 11, tm_mday: 13,
-                    tm_yday: 0, tm_wday: 0,  // dummy
-                    tm_hour: 18, tm_min: 30, tm_sec: 2, tm_nsec: 250000 * 1000,
-                    tm_isdst: 0, tm_gmtoff: 1 * 60 * 60 }),
-    ];
+    fn sample_data() -> Vec<(&'static str, DateTime<FixedOffset>)> {
+        vec![
+            ("2005-07-31T12:29:29Z",
+             FixedOffset::east(0).ymd(2005, 7, 31).and_hms(12, 29, 29)),
+            ("2003-12-13T18:30:02.25Z",
+             FixedOffset::east(0).ymd(2003, 12, 13).and_hms_micro(18, 30, 2, 250000)),
+            ("2003-12-13T18:30:02+01:00",
+             FixedOffset::east(1 * 60 * 60).ymd(2003, 12, 13).and_hms(18, 30, 2)),
+            ("2003-12-13T18:30:02.25+01:00",
+             FixedOffset::east(1 * 60 * 60).ymd(2003, 12, 13).and_hms_micro(18, 30, 2, 250000)),
+        ]
+    }
 
     /*
     @mark.parametrize(('rfc3339_string', 'dt'), sample_data)
@@ -134,12 +135,12 @@ mod test {
      */
     #[test]
     fn test_rfc3339_decode() {
-        for &(rfc3339_str, tm) in sample_data.iter() {
-            let parsed: time::Tm = Codec::<SchemaError>::decode(rfc3339_str).unwrap();
+        for &(rfc3339_str, tm) in sample_data().iter() {
+            let parsed: DateTime<_> = Codec::<SchemaError>::decode(rfc3339_str).unwrap();
             assert_eq!(parsed, tm);
         }
     }
-    
+
     fn to_string<T: Codec<E>, E>(value: T) -> String {
         let mut w = MemWriter::new();
         value.encode(&mut w);
@@ -148,18 +149,10 @@ mod test {
 
     #[test]
     fn test_rfc3339_encode() {
-        for &(rfc3339_str, tm) in sample_data.iter() {
-            assert_eq!(to_string(tm).as_slice(), rfc3339_str);
+        for &(rfc3339_str, dt) in sample_data().iter() {
+            assert_eq!(to_string(dt).as_slice(), rfc3339_str);
             // TODO: assert (Rfc3339(prefer_utc=True).encode(dt) == codec.encode(dt.astimezone(utc)))
         }
-    }
-
-    #[test]
-    fn test_rfc3339_now() {
-        let now = time::now();
-        let encoded = to_string(now);
-        let decoded: time::Tm = Codec::<SchemaError>::decode(encoded.as_slice()).unwrap();
-        assert_eq!(decoded, now);
     }
 /*
 
@@ -179,13 +172,8 @@ def test_rfc3339_with_white_spaces():
         let rfc_str = r#"
             2003-12-13T18:30:02+01:00
         "#;
-        let rfc_tm = time::Tm {
-            tm_year: 2003 - 1900, tm_mon: 12 - 1, tm_mday: 13,
-            tm_yday: 0, tm_wday: 0,  // dummy
-            tm_hour: 18, tm_min: 30, tm_sec: 2, tm_nsec: 0,
-            tm_isdst: 0, tm_gmtoff: 60 * 60
-        };
-        let decoded_tm: time::Tm = Codec::<SchemaError>::decode(rfc_str).unwrap();
-        assert_eq!(decoded_tm, rfc_tm);
+        let dt = FixedOffset::east(1 * 60 * 60).ymd(2003, 12, 13).and_hms(18, 30, 2);
+        let decoded_dt: DateTime<_> = Codec::<SchemaError>::decode(rfc_str).unwrap();
+        assert_eq!(decoded_dt, dt);
     }
 }
