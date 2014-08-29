@@ -38,8 +38,15 @@ impl Codec<SchemaError> for time::Tm {
     }
 
     fn decode(r: &str) -> SchemaResult<time::Tm> {
-        let pattern = regex!(
-            r#"^(?P<year>\d{4})-(?P<month>0[1-9]|1[012])-(?P<day>0[1-9]|[12]\d|3[01])T(?P<hour>[01]\d|2[0-3]):(?P<minute>[0-5]\d):(?P<second>[0-5]\d|60)(?:\.(?P<microsecond>\d+))?(?P<tz>Z|(?P<tz_offset>(?P<tz_offset_sign>[+-])(?P<tz_offset_hour>[01]\d|2[0-3]):(?P<tz_offset_minute>[0-5]\d)))$"#);
+        let pattern = regex!(concat!(
+            r#"^"#,
+            r#"(?P<year>\d{4})-(?P<month>0[1-9]|1[012])-(?P<day>0[1-9]|[12]\d|3[01])"#,
+            r#"T"#,
+            r#"(?P<hour>[01]\d|2[0-3]):(?P<minute>[0-5]\d)"#,
+                                   r#":(?P<second>[0-5]\d|60)(?:\.(?P<microsecond>\d+))?"#,
+            r#"(?P<tz>Z|(?P<tz_offset>(?P<tz_offset_sign>[+-])(?P<tz_offset_hour>[01]\d|2[0-3])"#,
+                                                          r#":(?P<tz_offset_minute>[0-5]\d)))$"#,
+        ));
         let caps = match pattern.captures(r) {
             None => { return Err(DecodeError(format!("\"{}\" is not valid RFC 3339 date time string", r))); }
             Some(c) => c,
