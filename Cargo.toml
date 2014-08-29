@@ -11,5 +11,4 @@ path = "src/lib.rs"
 git = "https://github.com/netvl/rust-xml.git"
 
 [dependencies.http]
-path = "../../rust-http"
-# git = "https://github.com/chris-morgan/rust-http.git"
+git = "https://github.com/chris-morgan/rust-http.git"
