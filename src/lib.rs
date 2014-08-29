@@ -1,4 +1,10 @@
-#![feature(struct_variant)]
+#![feature(phase, struct_variant, macro_rules)]
+
+#[phase(plugin)]
+extern crate regex_macros;
+
+extern crate regex;
+extern crate time;
 
 extern crate xml;
 
