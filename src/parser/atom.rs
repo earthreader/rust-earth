@@ -24,6 +24,33 @@ struct AtomSession {
     element_ns: String,
 }
 
+pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> DecodeResult<(feed::Element, Option<CrawlerHint>)> {
+    let mut parser = XmlDecoder::new(xml::EventReader::new(xml));
+    let mut result = None;
+    try!(parser.each_child(|p| {
+        p.read_event(|p, event| match event {
+            &StartElement { ref name, ref attributes, .. } => {
+                let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
+                    name.namespace_ref().map_or(false, |n| n == atom_xmlns)
+                }).unwrap();
+                let xml_base = get_xml_base(attributes.as_slice()).unwrap_or(feed_url);
+                let session = AtomSession { xml_base: xml_base.into_string(),
+                                            element_ns: atom_xmlns.into_string() };
+                let feed_data = parse_feed(p, feed_url, need_entries, session);
+                result = Some(feed_data);
+                Ok(())
+            }
+            &EndDocument => { fail!(); }
+            _ => { Ok(()) }
+        })
+    }));
+    match result {
+        Some(Ok(r)) => Ok((r, None)),
+        Some(Err(e)) => Err(e),
+        None => Err(super::base::NoResult),
+    }
+}
+
 fn get_xml_base<'a>(attributes: &'a [Attribute]) -> Option<&'a str> {
     attributes.iter().find(|&attr| {
         attr.name.namespace_ref().map_or(false, |ns| ns == XML_XMLNS)
@@ -354,31 +381,4 @@ fn parse_content<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute]
         content.fields.insert("source_uri".to_string(), feed::Str(src.to_string()));  // TODO
     }
     Ok(content)
-}
-
-pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> DecodeResult<(feed::Element, Option<CrawlerHint>)> {
-    let mut parser = XmlDecoder::new(xml::EventReader::new(xml));
-    let mut result = None;
-    try!(parser.each_child(|p| {
-        p.read_event(|p, event| match event {
-            &StartElement { ref name, ref attributes, .. } => {
-                let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
-                    name.namespace_ref().map_or(false, |n| n == atom_xmlns)
-                }).unwrap();
-                let xml_base = get_xml_base(attributes.as_slice()).unwrap_or(feed_url);
-                let session = AtomSession { xml_base: xml_base.into_string(),
-                                            element_ns: atom_xmlns.into_string() };
-                let feed_data = parse_feed(p, feed_url, need_entries, session);
-                result = Some(feed_data);
-                Ok(())
-            }
-            &EndDocument => { fail!(); }
-            _ => { Ok(()) }
-        })
-    }));
-    match result {
-        Some(Ok(r)) => Ok((r, None)),
-        Some(Err(e)) => Err(e),
-        None => Err(super::base::NoResult),
-    }
 }
