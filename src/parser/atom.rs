@@ -1,5 +1,7 @@
-use chrono::{DateTime, FixedOffset};
+use std::default::Default;
+use std::from_str::from_str;
 
+use chrono::{DateTime, FixedOffset};
 use xml;
 use xml::common::{Name, Attribute};
 use xml::reader::events::{EndDocument, StartElement, Characters};
@@ -24,7 +26,7 @@ struct AtomSession {
     element_ns: String,
 }
 
-pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> DecodeResult<(feed::Element, Option<CrawlerHint>)> {
+pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> DecodeResult<(feed::Feed, Option<CrawlerHint>)> {
     let mut parser = XmlDecoder::new(xml::EventReader::new(xml));
     let mut result = None;
     try!(parser.each_child(|p| {
@@ -61,55 +63,83 @@ fn name_matches<'a>(name: &'a Name, namespace: Option<&'a str>, local_name: &str
     name.namespace.as_ref().map(|n| n.as_slice()) == namespace && name.local_name.as_slice() == local_name
 }
 
-fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entries: bool, session: AtomSession) -> DecodeResult<feed::Element> {
-    let mut feed = feed::Element::new("feed".to_string());
-    let mut entries = Vec::new();
+macro_rules! unexpected (
+    ($name:expr) => ( fail!("Unexpected field: {}", $name) )
+)
+
+fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entries: bool, session: AtomSession) -> DecodeResult<feed::Feed> {
+    let mut id = Default::default();
+    let mut title = Default::default();
+    let mut links: Vec<_> = Default::default();
+    let mut updated_at = Default::default();
+    let mut authors: Vec<_> = Default::default();
+    let mut contributors: Vec<_> = Default::default();
+    let mut categories: Vec<_> = Default::default();
+    let mut rights = Default::default();
+    let mut subtitle = Default::default();
+    let mut generator = Default::default();
+    let mut logo = Default::default();
+    let mut icon = Default::default();
+    let mut entries: Vec<_> = Default::default();
+
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
                 &StartElement { ref name, ref attributes, .. }
                 if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
-                    feed.fields.insert(name.local_name.to_string(), feed::Str(result));
+                    match name.local_name.as_slice() {
+                        "id" => id = Some(result),
+                        "icon" => icon = Some(result),
+                        "logo" => logo = Some(result),
+                        x => unexpected!(x),
+                    }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_text_construct(p, attributes.as_slice()));
-                    feed.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    match name.local_name.as_slice() {
+                        "title" => title = Some(result),
+                        "rights" => rights = Some(result),
+                        "subtitle" => subtitle = Some(result),
+                        x => unexpected!(x),
+                    }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
                     match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
-                        Some(result) => {
-                            feed.fields.insert(name.local_name.to_string().append("s"), feed::Elem(result));
-                        }
+                        Some(result) => match name.local_name.as_slice() {
+                            "author" => authors.push(result),
+                            "contributor" => contributors.push(result),
+                            x => unexpected!(x),
+                        },
                         None => { }
                     }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "link" == name.local_name.as_slice() => {
                     let result = try!(parse_link(attributes.as_slice(), session.clone()));
-                    feed.fields.insert("links".to_string(), feed::Elem(result));
+                    links.push(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["updated", "modified"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_datetime(p));
-                    feed.fields.insert("updated_at".to_string(), feed::DateTime(result));
+                    updated_at = Some(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "category" == name.local_name.as_slice() => {
                     let result = try!(parse_category(attributes.as_slice()));
-                    feed.fields.insert("categories".to_string(), feed::Elem(result));
+                    categories.push(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "generator" == name.local_name.as_slice() => {
                     let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
-                    feed.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    generator = Some(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if need_entries && name_matches(name, Some(session.element_ns.as_slice()), "entry") => {
                     let result = try!(parse_entry(p, session.clone()));
-                    entries.push(feed::Elem(result));
+                    entries.push(result);
                 }
 
                 _otherwise => { }
@@ -117,64 +147,102 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
             Ok(())
         })
     }));
-    feed.fields.find_or_insert("id".to_string(), feed::Str(feed_url.to_string()));
-    feed.fields.insert("entries".to_string(), feed::Seq(entries));
+
+    let feed = feed::Feed {
+        source: feed::Source {
+            metadata: feed::Metadata {
+                id: id.unwrap_or_else(|| feed_url.to_string()),
+                title: title.unwrap(),
+                links: feed::LinkList(links),
+                updated_at: updated_at.unwrap(),
+                authors: authors,
+                contributors: contributors,
+                categories: categories,
+                rights: rights,
+            },
+            subtitle: subtitle,
+            generator: generator,
+            logo: logo,
+            icon: icon,
+        },
+        entries: entries,
+    };
     Ok(feed)
 }
 
-fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Element> {
-    let mut entry = feed::Element::new("entry".to_string());
+fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Entry> {
+    let mut id = Default::default();
+    let mut title = Default::default();
+    let mut links = Vec::new();
+    let mut updated_at = Default::default();
+    let mut authors = Vec::new();
+    let mut contributors = Vec::new();
+    let mut categories = Vec::new();
+    let mut rights = Default::default();
+    let mut published_at = Default::default();
+    let mut summary = Default::default();
+    let mut content = Default::default();
+    let mut source = Default::default();
+    let mut read = Default::default();
+    let mut starred = Default::default();
+
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
                 &StartElement { ref name, ref attributes, .. }
                 if "source" == name.local_name.as_slice() => {
                     let result = try!(parse_source(p, session.clone()));
-                    entry.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    source = Some(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "id" == name.local_name.as_slice() => {
                     let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
-                    entry.fields.insert(name.local_name.to_string(), feed::Str(result));
+                    id = Some(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["title", "rights", "summary"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_text_construct(p, attributes.as_slice()));
-                    entry.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    match name.local_name.as_slice() {
+                        "title" => title = Some(result),
+                        "rights" => rights = Some(result),
+                        "summary" => summary = Some(result),
+                        x => unexpected!(x),
+                    }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
                     match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
-                        Some(result) => {
-                            entry.fields.insert(name.local_name.to_string().append("s"), feed::Elem(result));
-                        }
+                        Some(result) => match name.local_name.as_slice() {
+                            "author" => authors.push(result),
+                            "contributor" => contributors.push(result),
+                            x => unexpected!(x),
+                        },
                         None => { }
                     }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "link" == name.local_name.as_slice() => {
                     let result = try!(parse_link(attributes.as_slice(), session.clone()));
-                    entry.fields.insert("links".to_string(), feed::Elem(result));
+                    links.push(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
-                if ["updated", "published"].contains(&name.local_name.as_slice()) => {
+                if ["updated", "published", "modified"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_datetime(p));
                     let field_name = if name.local_name.as_slice() == "published" {
-                        "published_at"
+                        published_at = Some(result);
                     } else {
-                        "updated_at"
+                        updated_at = Some(result);
                     };
-                    entry.fields.insert(field_name.to_string(), feed::DateTime(result));
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "category" == name.local_name.as_slice() => {
                     let result = try!(parse_category(attributes.as_slice()));
-                    entry.fields.insert("categories".to_string(), feed::Elem(result));
+                    categories.push(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "content" == name.local_name.as_slice() => {
                     let result = try!(parse_content(p, attributes.as_slice(), session.clone()));
-                    entry.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    content = Some(result);
                 }
 
                 _otherwise => { }
@@ -182,52 +250,95 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
             Ok(())
         })
     }));
+
+    let entry = feed::Entry {
+        metadata: feed::Metadata {
+            id: id.unwrap(),
+            title: title.unwrap(),
+            links: feed::LinkList(links),
+            updated_at: updated_at.unwrap(),
+            authors: authors,
+            contributors: contributors,
+            categories: categories,
+            rights: rights,
+        },
+        published_at: published_at,
+        summary: summary,
+        content: content,
+        source: source,
+        read: read,
+        starred: starred,
+    };
     Ok(entry)
 }
 
-fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Element> {
-    let mut source = feed::Element::new("source".to_string());
+fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Source> {
+    let mut id = Default::default();
+    let mut title = Default::default();
+    let mut links = Vec::new();
+    let mut updated_at = Default::default();
+    let mut authors = Vec::new();
+    let mut contributors = Vec::new();
+    let mut categories = Vec::new();
+    let mut rights = Default::default();
+    let mut subtitle = Default::default();
+    let mut generator = Default::default();
+    let mut logo = Default::default();
+    let mut icon = Default::default();
+
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
                 &StartElement { ref name, ref attributes, .. }
                 if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
-                    source.fields.insert(name.local_name.to_string(), feed::Str(result));
+                    match name.local_name.as_slice() {
+                        "id" => id = Some(result),
+                        "icon" => icon = Some(result),
+                        "logo" => logo = Some(result),
+                        x => unexpected!(x),
+                    }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_text_construct(p, attributes.as_slice()));
-                    source.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    match name.local_name.as_slice() {
+                        "title" => title = Some(result),
+                        "rights" => rights = Some(result),
+                        "subtitle" => subtitle = Some(result),
+                        x => unexpected!(x),
+                    }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
                     match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
-                        Some(result) => {
-                            source.fields.insert(name.local_name.to_string().append("s"), feed::Elem(result));
-                        }
+                        Some(result) => match name.local_name.as_slice() {
+                            "author" => authors.push(result),
+                            "contributor" => contributors.push(result),
+                            x => unexpected!(x),
+                        },
                         None => { }
                     }
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "link" == name.local_name.as_slice() => {
                     let result = try!(parse_link(attributes.as_slice(), session.clone()));
-                    source.fields.insert("links".to_string(), feed::Elem(result));
+                    links.push(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "updated" == name.local_name.as_slice() => {
                     let result = try!(parse_datetime(p));
-                    source.fields.insert("updated_at".to_string(), feed::DateTime(result));
+                    updated_at = Some(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "category" == name.local_name.as_slice() => {
                     let result = try!(parse_category(attributes.as_slice()));
-                    source.fields.insert("categories".to_string(), feed::Elem(result));
+                    categories.push(result);
                 }
                 &StartElement { ref name, ref attributes, .. }
                 if "generator" == name.local_name.as_slice() => {
                     let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
-                    source.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                    generator = Some(result);
                 }
 
                 _otherwise => { }
@@ -235,6 +346,23 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> 
             Ok(())
         })
     }));
+
+    let source = feed::Source {
+        metadata: feed::Metadata {
+            id: id.unwrap(),
+            title: title.unwrap(),
+            links: feed::LinkList(links),
+            updated_at: updated_at.unwrap(),
+            authors: authors,
+            contributors: contributors,
+            categories: categories,
+            rights: rights,
+        },
+        subtitle: subtitle,
+        generator: generator,
+        logo: logo,
+        icon: icon,
+    };
     Ok(source)
 }
 
@@ -258,63 +386,6 @@ fn read_whole_text<B: Buffer>(parser: &mut XmlDecoder<B>) -> DecodeResult<String
     Ok(text)
 }
 
-fn parse_icon<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<String> {
-    reset_xml_base(attributes, &mut session);
-    Ok(session.xml_base.append(try!(read_whole_text(parser)).as_slice()))
-}
-
-fn parse_text_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute]) -> DecodeResult<feed::Element> {
-    let mut text = feed::Element::new("text".to_string());
-    let text_type = attributes.iter().find(|&attr| attr.name.local_name.as_slice() == "type");
-    let text_type = match text_type.map(|e| e.value.as_slice()) {
-        Some("text/plaln") => "text",
-        Some("text/html") => "html",
-        _ => "text",
-    };
-    if ["text", "html"].contains(&text_type) {
-        text.fields.insert("value".to_string(), feed::Str(try!(read_whole_text(parser))));
-    } else if text_type == "xhtml" {
-        text.fields.insert("value".to_string(), feed::Str("".to_string()));  // TODO
-    }
-    text.fields.insert("type".to_string(), feed::Str(text_type.to_string()));
-    Ok(text)
-}
-
-fn parse_person_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<Option<feed::Element>> {
-    reset_xml_base(attributes, &mut session);
-    let mut person = feed::Element::new("person".to_string());
-    try!(parser.each_child(|p| {
-        p.read_event(|p, event| {
-            match event {
-                &StartElement { ref name, .. }
-                if name_matches(name, Some(session.element_ns.as_slice()), "name") => {
-                    person.fields.insert("name".to_string(), feed::Str(try!(read_whole_text(p))));
-                }
-                &StartElement { ref name, .. }
-                if name_matches(name, Some(session.element_ns.as_slice()), "uri") => {
-                    person.fields.insert("uri".to_string(), feed::Str(try!(read_whole_text(p))));
-                }
-                &StartElement { ref name, .. }
-                if name_matches(name, Some(session.element_ns.as_slice()), "email") => {
-                    person.fields.insert("email".to_string(), feed::Str(try!(read_whole_text(p))));
-                }
-                _ => { }
-            }
-            Ok(())
-        })
-    }));
-    let name = "name".to_string();
-    if !person.fields.contains_key(&name) {
-        let v = match person.fields.find(&"uri".to_string())
-                           .or_else(|| person.fields.find(&"email".to_string())) {
-            Some(v) => { v.clone() }
-            None => { return Ok(None); }
-        };
-        person.fields.insert(name, v);
-    }
-    Ok(Some(person))
-}
-
 fn find_from_attr<'a>(attr: &'a [Attribute], key: &str) -> Option<&'a str> {
     attr.iter()
         .find(|&attr| attr.name.local_name.as_slice() == key)
@@ -330,18 +401,74 @@ macro_rules! f (
     )
 )
 
-fn parse_link(attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Element> {
+fn parse_icon<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<String> {
     reset_xml_base(attributes, &mut session);
-    let mut link = feed::Element::new("link".to_string());
-    link.fields.insert("uri".to_string(), feed::Str(f!(attributes, "href")));
-    link.fields.insert("mimetype".to_string(), feed::Str(f!(attributes, "type")));
-    link.fields.insert("language".to_string(), feed::Str(f!(attributes, "hreflang")));
-    link.fields.insert("title".to_string(), feed::Str(f!(attributes, "title")));
-    link.fields.insert("byte_size".to_string(), feed::Str(f!(attributes, "length")));
-    for rel in find_from_attr(attributes, "rel").move_iter() {
-        link.fields.insert("relation".to_string(), feed::Str(rel.to_string()));
-    }
-    Ok(link)
+    Ok(session.xml_base.append(try!(read_whole_text(parser)).as_slice()))
+}
+
+fn parse_text_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute]) -> DecodeResult<feed::Text> {
+    let text_type = match find_from_attr(attributes, "type") {
+        Some("text/plaln") | Some("text") => feed::text_type::Text,
+        Some("text/html") | Some("html") => feed::text_type::Html,
+        Some(_) => { feed::text_type::Text },  // TODO
+        None => feed::text_type::Text,
+    };
+    let text = feed::Text {
+        type_: text_type,
+        value: try!(read_whole_text(parser)),
+    };
+    // else if text_type == "xhtml" {
+    //     text.fields.insert("value".to_string(), feed::Str("".to_string()));  // TODO
+    // }
+    Ok(text)
+}
+
+fn parse_person_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<Option<feed::Person>> {
+    reset_xml_base(attributes, &mut session);
+    let mut person_name = Default::default();
+    let mut uri = Default::default();
+    let mut email = Default::default();
+
+    try!(parser.each_child(|p| {
+        p.read_event(|p, event| {
+            match event {
+                &StartElement { ref name, .. }
+                if name_matches(name, Some(session.element_ns.as_slice()), "name") => {
+                    person_name = Some(try!(read_whole_text(p)));
+                }
+                &StartElement { ref name, .. }
+                if name_matches(name, Some(session.element_ns.as_slice()), "uri") => {
+                    uri = Some(try!(read_whole_text(p)));
+                }
+                &StartElement { ref name, .. }
+                if name_matches(name, Some(session.element_ns.as_slice()), "email") => {
+                    email = Some(try!(read_whole_text(p)));
+                }
+                _ => { }
+            }
+            Ok(())
+        })
+    }));
+    let name = match person_name {
+        Some(n) => n,
+        None => match uri.clone().or_else(|| email.clone()) {
+            Some(v) => { v }
+            None => { return Ok(None); }
+        }
+    };
+    Ok(Some(feed::Person { name: name, uri: uri, email: email }))
+}
+
+fn parse_link(attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Link> {
+    reset_xml_base(attributes, &mut session);
+    Ok(feed::Link {
+        uri: f!(attributes, "href"),
+        relation: find_from_attr(attributes, "rel").unwrap_or("alternate").to_string(),
+        mimetype: find_from_attr(attributes, "type").map(|v| v.to_string()),
+        language: find_from_attr(attributes, "hreflang").map(|v| v.to_string()),
+        title: find_from_attr(attributes, "title").map(|v| v.to_string()),
+        byte_size: find_from_attr(attributes, "length").and_then(from_str),
+    })
 }
 
 fn parse_datetime<B: Buffer>(parser: &mut XmlDecoder<B>) -> DecodeResult<DateTime<FixedOffset>> {
@@ -351,34 +478,27 @@ fn parse_datetime<B: Buffer>(parser: &mut XmlDecoder<B>) -> DecodeResult<DateTim
     }
 }
 
-fn parse_category(attributes: &[Attribute]) -> DecodeResult<feed::Element> {
-    let mut category = feed::Element::new("category".to_string());
-    category.fields.insert("term".to_string(), feed::Str(f!(attributes, "term")));
-    category.fields.insert("scheme_uri".to_string(), feed::Str(f!(attributes, "scheme")));
-    category.fields.insert("label".to_string(), feed::Str(f!(attributes, "label")));
-    Ok(category)
+fn parse_category(attributes: &[Attribute]) -> DecodeResult<feed::Category> {
+    Ok(feed::Category {
+        term: f!(attributes, "term"),
+        scheme_uri: find_from_attr(attributes, "scheme").map(|v| v.to_string()),
+        label: find_from_attr(attributes, "label").map(|v| v.to_string()),
+    })
 }
 
-fn parse_generator<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Element> {
+fn parse_generator<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Generator> {
     reset_xml_base(attributes, &mut session);
-    let mut generator = feed::Element::new("generator".to_string());
-    generator.fields.insert("value".to_string(), feed::Str(try!(read_whole_text(parser))));
-    for uri in find_from_attr(attributes, "uri").move_iter() {
-        generator.fields.insert("uri".to_string(), feed::Str(uri.to_string()));  // TODO
-    }
-    generator.fields.insert("version".to_string(), feed::Str(f!(attributes, "version")));
-    Ok(generator)
+    Ok(feed::Generator {
+        uri: find_from_attr(attributes, "uri").map(|v| v.to_string()),  // TODO
+        version: find_from_attr(attributes, "version").map(|v| v.to_string()),
+        value: try!(read_whole_text(parser)),
+    })
 }
 
-fn parse_content<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Element> {
+fn parse_content<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Content> {
     reset_xml_base(attributes, &mut session);
-    let mut content = feed::Element::new("content".to_string());
-    content.fields.insert("value".to_string(), feed::Str(try!(read_whole_text(parser))));
-    for content_type in find_from_attr(attributes, "type").move_iter() {
-        content.fields.insert("type".to_string(), feed::Str(content_type.to_string()));
-    }
-    for src in find_from_attr(attributes, "src").move_iter() {
-        content.fields.insert("source_uri".to_string(), feed::Str(src.to_string()));  // TODO
-    }
-    Ok(content)
+    Ok(feed::Content {
+        text: try!(parse_text_construct(parser, attributes)),
+        source_uri: find_from_attr(attributes, "src").map(|v| v.to_string()),  // TODO
+    })
 }
