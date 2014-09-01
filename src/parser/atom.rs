@@ -31,7 +31,7 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> Deco
     let mut result = None;
     try!(parser.each_child(|p| {
         p.read_event(|p, event| match event {
-            &StartElement { ref name, ref attributes, .. } => {
+            StartElement { ref name, ref attributes, .. } => {
                 let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
                     name.namespace_ref().map_or(false, |n| n == atom_xmlns)
                 }).unwrap();
@@ -42,7 +42,7 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> Deco
                 result = Some(feed_data);
                 Ok(())
             }
-            &EndDocument => { fail!(); }
+            EndDocument => { fail!(); }
             _ => { Ok(()) }
         })
     }));
@@ -85,7 +85,7 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
                     match name.local_name.as_slice() {
@@ -95,7 +95,7 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
                         x => unexpected!(x),
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_text_construct(p, attributes.as_slice()));
                     match name.local_name.as_slice() {
@@ -105,7 +105,7 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
                         x => unexpected!(x),
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
                     match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
                         Some(result) => match name.local_name.as_slice() {
@@ -116,27 +116,27 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
                         None => { }
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "link" == name.local_name.as_slice() => {
                     let result = try!(parse_link(attributes.as_slice(), session.clone()));
                     links.push(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["updated", "modified"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_datetime(p));
                     updated_at = Some(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "category" == name.local_name.as_slice() => {
                     let result = try!(parse_category(attributes.as_slice()));
                     categories.push(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "generator" == name.local_name.as_slice() => {
                     let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
                     generator = Some(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if need_entries && name_matches(name, Some(session.element_ns.as_slice()), "entry") => {
                     let result = try!(parse_entry(p, session.clone()));
                     entries.push(result);
@@ -189,17 +189,17 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "source" == name.local_name.as_slice() => {
                     let result = try!(parse_source(p, session.clone()));
                     source = Some(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "id" == name.local_name.as_slice() => {
                     let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
                     id = Some(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["title", "rights", "summary"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_text_construct(p, attributes.as_slice()));
                     match name.local_name.as_slice() {
@@ -209,7 +209,7 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
                         x => unexpected!(x),
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
                     match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
                         Some(result) => match name.local_name.as_slice() {
@@ -220,12 +220,12 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
                         None => { }
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "link" == name.local_name.as_slice() => {
                     let result = try!(parse_link(attributes.as_slice(), session.clone()));
                     links.push(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["updated", "published", "modified"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_datetime(p));
                     let field_name = if name.local_name.as_slice() == "published" {
@@ -234,12 +234,12 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
                         updated_at = Some(result);
                     };
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "category" == name.local_name.as_slice() => {
                     let result = try!(parse_category(attributes.as_slice()));
                     categories.push(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "content" == name.local_name.as_slice() => {
                     let result = try!(parse_content(p, attributes.as_slice(), session.clone()));
                     content = Some(result);
@@ -289,7 +289,7 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> 
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
                     match name.local_name.as_slice() {
@@ -299,7 +299,7 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> 
                         x => unexpected!(x),
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
                     let result = try!(parse_text_construct(p, attributes.as_slice()));
                     match name.local_name.as_slice() {
@@ -309,7 +309,7 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> 
                         x => unexpected!(x),
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
                     match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
                         Some(result) => match name.local_name.as_slice() {
@@ -320,22 +320,22 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> 
                         None => { }
                     }
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "link" == name.local_name.as_slice() => {
                     let result = try!(parse_link(attributes.as_slice(), session.clone()));
                     links.push(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "updated" == name.local_name.as_slice() => {
                     let result = try!(parse_datetime(p));
                     updated_at = Some(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "category" == name.local_name.as_slice() => {
                     let result = try!(parse_category(attributes.as_slice()));
                     categories.push(result);
                 }
-                &StartElement { ref name, ref attributes, .. }
+                StartElement { ref name, ref attributes, .. }
                 if "generator" == name.local_name.as_slice() => {
                     let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
                     generator = Some(result);
@@ -377,7 +377,7 @@ fn read_whole_text<B: Buffer>(parser: &mut XmlDecoder<B>) -> DecodeResult<String
     try!(parser.each_child(|p| {
         p.read_event(|_p, event| {
             match event {
-                &Characters(ref s) => { text.push_str(s.as_slice()); }
+                Characters(s) => { text.push_str(s.as_slice()); }
                 _ => { }
             }
             Ok(())
@@ -432,15 +432,15 @@ fn parse_person_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[A
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
-                &StartElement { ref name, .. }
+                StartElement { ref name, .. }
                 if name_matches(name, Some(session.element_ns.as_slice()), "name") => {
                     person_name = Some(try!(read_whole_text(p)));
                 }
-                &StartElement { ref name, .. }
+                StartElement { ref name, .. }
                 if name_matches(name, Some(session.element_ns.as_slice()), "uri") => {
                     uri = Some(try!(read_whole_text(p)));
                 }
-                &StartElement { ref name, .. }
+                StartElement { ref name, .. }
                 if name_matches(name, Some(session.element_ns.as_slice()), "email") => {
                     email = Some(try!(read_whole_text(p)));
                 }

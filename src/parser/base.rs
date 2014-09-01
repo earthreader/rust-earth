@@ -59,17 +59,17 @@ impl<B: Buffer> XmlDecoder<B> {
         }
     }
 
-    pub fn read_event<T>(&mut self, f: |&mut XmlDecoder<B>, &XmlEvent| -> DecodeResult<T>) -> DecodeResult<T> {
+    pub fn read_event<T>(&mut self, f: |&mut XmlDecoder<B>, XmlEvent| -> DecodeResult<T>) -> DecodeResult<T> {
         match self.next() {
-            (ref e @ StartElement { .. }, depth) => {
-                let result = f(self, e);
+            (evt @ StartElement { .. }, depth) => {
+                let result = f(self, evt);
                 try!(self.drain_children(depth));
                 result
             }
             (evt @ EndElement { .. }, depth) => {
                 Err(UnexpectedEvent { event: evt, depth: depth })
             }
-            (ref e, _) => { f(self, e) }
+            (evt, _) => { f(self, evt) }
         }
     }
 
