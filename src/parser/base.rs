@@ -1,6 +1,8 @@
 use xml;
 use xml::reader::events::{XmlEvent, EndDocument, StartElement, EndElement, Error};
 
+use schema;
+
 pub struct XmlDecoder<B> {
     reader: xml::EventReader<B>,
     peeked: Option<(XmlEvent, uint)>,
@@ -12,6 +14,7 @@ pub enum DecodeError {
     UnexpectedEvent { event: XmlEvent, depth: uint },
     NoResult,
     AttributeNotFound(String),
+    SchemaError(schema::SchemaError),
 }
 
 pub type DecodeResult<T> = Result<T, DecodeError>;

@@ -36,7 +36,7 @@ macro_rules! parse_field(
     )
 )
 
-struct RFC3339;
+pub struct RFC3339;
 
 impl Codec<DateTime<FixedOffset>> for RFC3339 {
     fn encode(&self, value: &DateTime<FixedOffset>, w: &mut Writer) -> SchemaResult<()> {

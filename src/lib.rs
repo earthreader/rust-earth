@@ -11,5 +11,4 @@ extern crate xml;
 
 pub mod feed;
 pub mod parser;
-
-mod schema;
+pub mod schema;

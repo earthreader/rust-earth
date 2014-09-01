@@ -1,4 +1,5 @@
 use std::collections::hashmap::HashMap;
+use chrono::{DateTime, FixedOffset};
 
 #[deriving(Clone)]
 pub struct Element {
@@ -14,5 +15,6 @@ impl Element {
 
 #[deriving(Clone)]
 pub enum ElementValue {
-    Str(String), Elem(Element)
+    Str(String), Elem(Element), DateTime(DateTime<FixedOffset>),
+    Seq(Vec<ElementValue>),
 }

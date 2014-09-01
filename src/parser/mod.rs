@@ -1,3 +1,2 @@
 pub mod atom;
-
-mod base;
+pub mod base;
