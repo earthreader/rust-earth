@@ -1,11 +1,8 @@
-use std::collections::hashmap::HashMap;
-
 use xml;
 use xml::common::{Name, Attribute};
-use xml::namespace::Namespace;
-use xml::reader::events::{StartElement};
+use xml::reader::events::{EndDocument, StartElement, Characters};
 
-use super::base::{Element, ParserBuilder, ParserBase};
+use super::base::{XmlDecoder, DecodeResult, AttributeNotFound};
 use feed;
 
 static ATOM_XMLNS_SET: [&'static str, ..2] = [
@@ -29,116 +26,174 @@ fn get_xml_base<'a>(attributes: &'a [Attribute]) -> Option<&'a str> {
     }).map(|attr| attr.value.as_slice())
 }
 
-type ChildMap = HashMap<String, Vec<feed::ElementValue>>;
-
-fn parse_feed(_element: &Element, _children: ChildMap, _session: AtomSession) -> feed::ElementValue {
-    feed::Elem(feed::Element::new("feed".to_string()))
+fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Element> {
+    let mut feed = feed::Element::new("feed".to_string());
+    try!(parser.each_child(|p| {
+        p.read_event(|p, event| {
+            match event {
+                &StartElement { ref name, ref attributes, .. }
+                if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
+                    let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
+                    feed.fields.insert(name.local_name.to_string(), feed::Str(result));
+                }
+                &StartElement { ref name, ref attributes, .. }
+                if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
+                    let result = try!(parse_text_construct(p, attributes.as_slice()));
+                    feed.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                }
+                &StartElement { ref name, ref attributes, .. }
+                if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
+                    match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
+                        Some(result) => {
+                            feed.fields.insert(name.local_name.to_string().append("s"), feed::Elem(result));
+                        }
+                        None => { }
+                    }
+                }
+                &StartElement { ref name, ref attributes, .. }
+                if "link" == name.local_name.as_slice() => {
+                    let result = try!(parse_link(attributes.as_slice(), session.clone()));
+                    feed.fields.insert(name.local_name.to_string(), feed::Elem(result));
+                }
+                _ => { }
+            }
+            Ok(())
+        })
+    }));
+    Ok(feed)
 }
 
-fn reset_xml_base(element: &Element, session: &mut AtomSession) {
-    for new_base in get_xml_base(element.attributes.as_slice()).move_iter() {
+fn reset_xml_base(attributes: &[Attribute], session: &mut AtomSession) {
+    for new_base in get_xml_base(attributes.as_slice()).move_iter() {
         session.xml_base = new_base.into_string();
     }
 }
 
-fn parse_icon(element: &Element, _children: ChildMap, session: AtomSession) -> feed::ElementValue {
-    feed::Str(session.xml_base.append(element.text.as_slice()))
+fn read_whole_text<B: Buffer>(parser: &mut XmlDecoder<B>) -> DecodeResult<String> {
+    let mut text = String::new();
+    try!(parser.each_child(|p| {
+        p.read_event(|_p, event| {
+            match event {
+                &Characters(ref s) => { text.push_str(s.as_slice()); }
+                _ => { }
+            }
+            Ok(())
+        })
+    }));
+    Ok(text)
 }
 
-fn parse_text_construct(element: &Element, _children: ChildMap, _session: AtomSession) -> feed::ElementValue {
+fn parse_icon<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<String> {
+    reset_xml_base(attributes, &mut session);
+    Ok(session.xml_base.append(try!(read_whole_text(parser)).as_slice()))
+}
+
+fn parse_text_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute]) -> DecodeResult<feed::Element> {
     let mut text = feed::Element::new("text".to_string());
-    let text_type = element.attributes.iter().find(|&attr| attr.name.local_name.as_slice() == "type");
+    let text_type = attributes.iter().find(|&attr| attr.name.local_name.as_slice() == "type");
     let text_type = match text_type.map(|e| e.value.as_slice()) {
         Some("text/plaln") => "text",
         Some("text/html") => "html",
         _ => "text",
     };
     if ["text", "html"].contains(&text_type) {
-        text.fields.insert("value".to_string(), feed::Str(element.text.clone()));
+        text.fields.insert("value".to_string(), feed::Str(try!(read_whole_text(parser))));
     } else if text_type == "xhtml" {
         text.fields.insert("value".to_string(), feed::Str("".to_string()));  // TODO
     }
     text.fields.insert("type".to_string(), feed::Str(text_type.to_string()));
-    feed::Elem(text)
+    Ok(text)
 }
 
-fn parse_person_construct(_element: &Element, mut children: ChildMap, session: AtomSession) -> feed::ElementValue {
+fn name_matches<'a>(name: &'a Name, namespace: Option<&'a str>, local_name: &str) -> bool {
+    name.namespace.as_ref().map(|n| n.as_slice()) == namespace && name.local_name.as_slice() == local_name
+}
+
+fn parse_person_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<Option<feed::Element>> {
+    reset_xml_base(attributes, &mut session);
     let mut person = feed::Element::new("person".to_string());
-    let person_name = children.pop(&"name".to_string()).and_then(|mut e| e.remove(0));
-    let person_uri = children.pop(&"uri".to_string()).and_then(|mut e| e.remove(0));
-    let person_email = children.pop(&"email".to_string()).and_then(|mut e| e.remove(0));
-    let person_name = match (person_name, &person_email, &person_uri) {
-        (Some(name), _,                _             ) => name,
-        (None,       &Some(ref email), _             ) => email.clone(),
-        (None,       &None,            &Some(ref uri)) => uri.clone(),
-        _ => { fail!("return None을 하고 싶은데 노답"); }
-    };
-    person.fields.insert("name".to_string(), person_name);
-    for email in person_email.move_iter() { person.fields.insert("email".to_string(), email); }
-    for uri in person_uri.move_iter() { person.fields.insert("uri".to_string(), uri); }
-    feed::Elem(person)
+    try!(parser.each_child(|p| {
+        p.read_event(|p, event| {
+            match event {
+                &StartElement { ref name, .. }
+                if name_matches(name, Some(session.element_ns.as_slice()), "name") => {
+                    person.fields.insert("name".to_string(), feed::Str(try!(read_whole_text(p))));
+                }
+                &StartElement { ref name, .. }
+                if name_matches(name, Some(session.element_ns.as_slice()), "uri") => {
+                    person.fields.insert("uri".to_string(), feed::Str(try!(read_whole_text(p))));
+                }
+                &StartElement { ref name, .. }
+                if name_matches(name, Some(session.element_ns.as_slice()), "email") => {
+                    person.fields.insert("email".to_string(), feed::Str(try!(read_whole_text(p))));
+                }
+                _ => { }
+            }
+            Ok(())
+        })
+    }));
+    let name = "name".to_string();
+    if !person.fields.contains_key(&name) {
+        let v = match person.fields.find(&"uri".to_string())
+                           .or_else(|| person.fields.find(&"email".to_string())) {
+            Some(v) => { v.clone() }
+            None => { return Ok(None); }
+        };
+        person.fields.insert(name, v);
+    }
+    Ok(Some(person))
 }
 
-fn parse_link(element: &Element, children: ChildMap, session: AtomSession) -> feed::ElementValue {
+fn find_from_attr<'a>(attr: &'a [Attribute], key: &str) -> Option<&'a str> {
+    attr.iter()
+        .find(|&attr| attr.name.local_name.as_slice() == key)
+        .map(|e| e.value.as_slice())
+}
+
+fn parse_link(attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Element> {
+    reset_xml_base(attributes, &mut session);
     let mut link = feed::Element::new("link".to_string());
-    link.fields.insert("uri".to_string(), feed::Str(element.get("href").unwrap().to_string()));
-    link.fields.insert("mimetype".to_string(), feed::Str(element.get("type").unwrap().to_string()));
-    link.fields.insert("language".to_string(), feed::Str(element.get("hreflang").unwrap().to_string()));
-    link.fields.insert("title".to_string(), feed::Str(element.get("title").unwrap().to_string()));
-    link.fields.insert("byte_size".to_string(), feed::Str(element.get("length").unwrap().to_string()));
-    for rel in element.get("rel").move_iter() {
+    macro_rules! f (
+        ($k:expr) => (
+            match find_from_attr(attributes, $k) {
+                Some(v) => { v.to_string() }
+                None => { return Err(AttributeNotFound($k.to_string())); }
+            }
+        )
+    )
+    link.fields.insert("uri".to_string(), feed::Str(f!("href")));
+    link.fields.insert("mimetype".to_string(), feed::Str(f!("type")));
+    link.fields.insert("language".to_string(), feed::Str(f!("hreflang")));
+    link.fields.insert("title".to_string(), feed::Str(f!("title")));
+    link.fields.insert("byte_size".to_string(), feed::Str(f!("length")));
+    for rel in find_from_attr(attributes, "rel").move_iter() {
         link.fields.insert("relation".to_string(), feed::Str(rel.to_string()));
     }
-    feed::Elem(link)
+    Ok(link)
 }
 
-fn build_feed_parser() -> ParserBase<AtomSession, feed::ElementValue> {
-    ParserBuilder::new()
-        .path("feed", parse_feed)
-            .path("id", parse_icon).on_start(reset_xml_base).end()
-            .path("icon", parse_icon).on_start(reset_xml_base).end()
-            .path("logo", parse_icon).on_start(reset_xml_base).end()
-            .path("title", parse_text_construct).end()
-            .path("rights", parse_text_construct).end()
-            .path("subtitle", parse_text_construct).end()
-            .path("author", parse_person_construct)
-                .attr_name("authors".to_string())
-                .on_start(reset_xml_base)
-            .end()
-            .path("contributor", parse_person_construct)
-                .attr_name("contributors".to_string())
-                .on_start(reset_xml_base)
-            .end()
-            .path("link", parse_link).on_start(reset_xml_base).end()
-        .end()
-    .build()
-}
-
-pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, parse_entry: bool) -> (feed::Element, Option<CrawlerHint>) {
-    enum ParseState { FindRoot, FindEntries(&'static str) }
-    let mut parser = xml::EventReader::new(xml);
-    let mut state = FindRoot;
-    'm: for event in parser.events() {
-        match state {
-            FindRoot => match event {
-                StartElement{ name, attributes, .. } => {
-                    let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
-                        name.namespace_ref().map_or(false, |n| n == atom_xmlns)
-                    }).unwrap();
-                    let xml_base = get_xml_base(attributes.as_slice()).unwrap_or(feed_url);
-                    let session = AtomSession { xml_base: xml_base.into_string(),
-                                                element_ns: atom_xmlns.into_string() };
-                    build_feed_parser().parse(&mut parser.events(), session);
-                    state = FindEntries(*atom_xmlns);
-                }
-                _ => {}
-            },
-            FindEntries(namespace) => match event {
-                _ => {}
+pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, parse_entry: bool) -> DecodeResult<(feed::Element, Option<CrawlerHint>)> {
+    let mut parser = XmlDecoder::new(xml::EventReader::new(xml));
+    let mut result = None;
+    parser.each_child(|p| {
+        p.read_event(|p, event| match event {
+            &StartElement { ref name, ref attributes, .. } => {
+                let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
+                    name.namespace_ref().map_or(false, |n| n == atom_xmlns)
+                }).unwrap();
+                let xml_base = get_xml_base(attributes.as_slice()).unwrap_or(feed_url);
+                let session = AtomSession { xml_base: xml_base.into_string(),
+                                            element_ns: atom_xmlns.into_string() };
+                result = Some(parse_feed(p, session));
+                Ok(())
             }
-        }
+            &EndDocument => { fail!(); }
+            _ => { Ok(()) }
+        })
+    });
+    match result {
+        Some(Ok(r)) => Ok((r, None)),
+        Some(Err(e)) => Err(e),
+        None => Err(super::base::NoResult),
     }
-    fail!();
-    // let feed_data = atom_get_feed_data(parser, feed_url, atom_xmlns);
-    // (feed_data, None)
 }
