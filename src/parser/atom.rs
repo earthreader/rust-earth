@@ -67,80 +67,141 @@ macro_rules! unexpected (
     ($name:expr) => ( fail!("Unexpected field: {}", $name) )
 )
 
+macro_rules! parse_schema (
+    { $parser:expr, $session:expr, $result:ty; $($var:ident as $attr:ident by $func:expr;)* } => {
+        define_variables!($($var),*);
+        parse_fields! { $parser; $($var as $attr by $func;)* };
+        let result = build_data!($result_ty);
+        Ok(result)
+    }
+)
+
+macro_rules! define_variables (
+    ($($var:ident: $plurality:ident),+) => {
+        let gen_names!($($var),+) = gen_defaults!($($var: $plurality),*);
+    }
+)
+
+macro_rules! gen_names (
+    ($($var:ident),+) => ( ($( mut $var ),+) )
+)
+
+macro_rules! gen_defaults (
+    ($($var:ident: $plurality:ident),+) => ( ($( gen_default!($var, $plurality) ),+) )
+)
+
+macro_rules! gen_default (
+    ($var:ident, multiple)         => ( Vec::new() );
+    ($var:ident, $plurality:ident) => ( Default::default() )
+)
+
+macro_rules! parse_fields (
+    { ($parser:expr, $session:expr) $($attr:expr => $var:ident: $plurality:ident by $func:expr;)* } => {
+        try!($parser.each_child(|p| {
+            p.read_event(|p, event| {
+                match event {
+                    StartElement { name, attributes, .. } => match name {
+                        $(
+                            Name { ref local_name, .. }
+                            if $attr == local_name.as_slice() => {
+                                let result = try!($func(p, attributes.as_slice(), $session.clone()));
+                                assign_field!($var: $plurality, result);
+                            }
+                         )*
+                        _name => { }
+                    },
+                    _otherwise => { }
+                }
+                Ok(())
+            })
+        }))
+    }
+)
+
+macro_rules! assign_field (
+    ($var:ident: multiple, $value:expr) => ( $var.push($value) );
+    ($var:ident: $p:ident, $value:expr) => ( $var = Some($value) )
+)
+
 fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entries: bool, session: AtomSession) -> DecodeResult<feed::Feed> {
-    let mut id = Default::default();
-    let mut title = Default::default();
-    let mut links: Vec<_> = Default::default();
-    let mut updated_at = Default::default();
-    let mut authors: Vec<_> = Default::default();
-    let mut contributors: Vec<_> = Default::default();
-    let mut categories: Vec<_> = Default::default();
-    let mut rights = Default::default();
-    let mut subtitle = Default::default();
-    let mut generator = Default::default();
-    let mut logo = Default::default();
-    let mut icon = Default::default();
-    let mut entries: Vec<_> = Default::default();
+    define_variables!(
+        id: required,
+        title: required,
+        links: multiple,
+        updated_at: required,
+        authors: multiple,
+        contributors: multiple,
+        categories: multiple,
+        rights: optional,
+        subtitle: optional,
+        generator: optional,
+        logo: optional,
+        icon: optional,
+        entries: multiple
+    );
 
     try!(parser.each_child(|p| {
         p.read_event(|p, event| {
             match event {
-                StartElement { ref name, ref attributes, .. }
-                if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
-                    match name.local_name.as_slice() {
-                        "id" => id = Some(result),
-                        "icon" => icon = Some(result),
-                        "logo" => logo = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_text_construct(p, attributes.as_slice()));
-                    match name.local_name.as_slice() {
-                        "title" => title = Some(result),
-                        "rights" => rights = Some(result),
-                        "subtitle" => subtitle = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
-                    match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
-                        Some(result) => match name.local_name.as_slice() {
-                            "author" => authors.push(result),
-                            "contributor" => contributors.push(result),
+                StartElement { name, attributes, .. } => match name {
+                    Name { ref local_name, .. }
+                    if ["id", "icon", "logo"].contains(&local_name.as_slice()) => {
+                        let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
+                        match local_name.as_slice() {
+                            "id" => id = Some(result),
+                            "icon" => icon = Some(result),
+                            "logo" => logo = Some(result),
                             x => unexpected!(x),
-                        },
-                        None => { }
+                        }
                     }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "link" == name.local_name.as_slice() => {
-                    let result = try!(parse_link(attributes.as_slice(), session.clone()));
-                    links.push(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["updated", "modified"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_datetime(p));
-                    updated_at = Some(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "category" == name.local_name.as_slice() => {
-                    let result = try!(parse_category(attributes.as_slice()));
-                    categories.push(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "generator" == name.local_name.as_slice() => {
-                    let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
-                    generator = Some(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if need_entries && name_matches(name, Some(session.element_ns.as_slice()), "entry") => {
-                    let result = try!(parse_entry(p, session.clone()));
-                    entries.push(result);
-                }
+                    Name { ref local_name, .. }
+                    if ["title", "rights", "subtitle"].contains(&local_name.as_slice()) => {
+                        let result = try!(parse_text_construct(p, attributes.as_slice(), session.clone()));
+                        match local_name.as_slice() {
+                            "title" => title = Some(result),
+                            "rights" => rights = Some(result),
+                            "subtitle" => subtitle = Some(result),
+                            x => unexpected!(x),
+                        }
+                    }
+                    Name { ref local_name, .. }
+                    if ["author", "contributor"].contains(&local_name.as_slice()) => {
+                        match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
+                            Some(result) => match local_name.as_slice() {
+                                "author" => authors.push(result),
+                                "contributor" => contributors.push(result),
+                                x => unexpected!(x),
+                            },
+                            None => { }
+                        }
+                    }
+                    Name { ref local_name, .. }
+                    if "link" == local_name.as_slice() => {
+                        let result = try!(parse_link(p, attributes.as_slice(), session.clone()));
+                        links.push(result);
+                    }
+                    Name { ref local_name, .. }
+                    if ["updated", "modified"].contains(&local_name.as_slice()) => {
+                        let result = try!(parse_datetime(p, attributes.as_slice(), session.clone()));
+                        updated_at = Some(result);
+                    }
+                    Name { ref local_name, .. }
+                    if "category" == local_name.as_slice() => {
+                        let result = try!(parse_category(p, attributes.as_slice(), session.clone()));
+                        categories.push(result);
+                    }
+                    Name { ref local_name, .. }
+                    if "generator" == local_name.as_slice() => {
+                        let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
+                        generator = Some(result);
+                    }
+                    ref name if need_entries && name_matches(name, Some(session.element_ns.as_slice()), "entry") => {
+                        let result = try!(parse_entry(p, attributes.as_slice(), session.clone()));
+                        entries.push(result);
+                    }
+
+                    _name => { }
+                },
 
                 _otherwise => { }
             }
@@ -170,86 +231,39 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
     Ok(feed)
 }
 
-fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Entry> {
-    let mut id = Default::default();
-    let mut title = Default::default();
-    let mut links = Vec::new();
-    let mut updated_at = Default::default();
-    let mut authors = Vec::new();
-    let mut contributors = Vec::new();
-    let mut categories = Vec::new();
-    let mut rights = Default::default();
-    let mut published_at = Default::default();
-    let mut summary = Default::default();
-    let mut content = Default::default();
-    let mut source = Default::default();
-    let mut read = Default::default();
-    let mut starred = Default::default();
+fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, _attributes: &[Attribute], session: AtomSession) -> DecodeResult<feed::Entry> {
+    define_variables!(
+        id: required,
+        title: required,
+        links: multiple,
+        updated_at: required,
+        authors: multiple,
+        contributors: multiple,
+        categories: multiple,
+        rights: optional,
+        published_at: optional,
+        summary: optional,
+        content: optional,
+        source: optional,
+        read: required,
+        starred: required
+    );
 
-    try!(parser.each_child(|p| {
-        p.read_event(|p, event| {
-            match event {
-                StartElement { ref name, ref attributes, .. }
-                if "source" == name.local_name.as_slice() => {
-                    let result = try!(parse_source(p, session.clone()));
-                    source = Some(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "id" == name.local_name.as_slice() => {
-                    let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
-                    id = Some(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["title", "rights", "summary"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_text_construct(p, attributes.as_slice()));
-                    match name.local_name.as_slice() {
-                        "title" => title = Some(result),
-                        "rights" => rights = Some(result),
-                        "summary" => summary = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
-                    match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
-                        Some(result) => match name.local_name.as_slice() {
-                            "author" => authors.push(result),
-                            "contributor" => contributors.push(result),
-                            x => unexpected!(x),
-                        },
-                        None => { }
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "link" == name.local_name.as_slice() => {
-                    let result = try!(parse_link(attributes.as_slice(), session.clone()));
-                    links.push(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["updated", "published", "modified"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_datetime(p));
-                    let field_name = if name.local_name.as_slice() == "published" {
-                        published_at = Some(result);
-                    } else {
-                        updated_at = Some(result);
-                    };
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "category" == name.local_name.as_slice() => {
-                    let result = try!(parse_category(attributes.as_slice()));
-                    categories.push(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "content" == name.local_name.as_slice() => {
-                    let result = try!(parse_content(p, attributes.as_slice(), session.clone()));
-                    content = Some(result);
-                }
-
-                _otherwise => { }
-            }
-            Ok(())
-        })
-    }));
+    parse_fields! { (parser, session)
+        "id"          => id: required by parse_icon;
+        "title"       => title: required by parse_text_construct;
+        "link"        => links: multiple by parse_link;
+        "updated"     => updated_at: required by parse_datetime;
+        "modified"    => updated_at: required by parse_datetime;
+        "author"      => authors: multiple by parse_person_construct;
+        "contributor" => contributors: multiple by parse_person_construct;
+        "category"    => categories: multiple by parse_category;
+        "rights"      => rights: optional by parse_text_construct;
+        "published"   => published_at: optional by parse_datetime;
+        "summary"     => summary: optional by parse_text_construct;
+        "content"     => content: optional by parse_content;
+        "source"      => source: optional by parse_source;
+    }
 
     let entry = feed::Entry {
         metadata: feed::Metadata {
@@ -257,8 +271,8 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
             title: title.unwrap(),
             links: feed::LinkList(links),
             updated_at: updated_at.unwrap(),
-            authors: authors,
-            contributors: contributors,
+            authors: authors.move_iter().filter_map(|v| v).collect(),
+            contributors: contributors.move_iter().filter_map(|v| v).collect(),
             categories: categories,
             rights: rights,
         },
@@ -272,80 +286,36 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> D
     Ok(entry)
 }
 
-fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> DecodeResult<feed::Source> {
-    let mut id = Default::default();
-    let mut title = Default::default();
-    let mut links = Vec::new();
-    let mut updated_at = Default::default();
-    let mut authors = Vec::new();
-    let mut contributors = Vec::new();
-    let mut categories = Vec::new();
-    let mut rights = Default::default();
-    let mut subtitle = Default::default();
-    let mut generator = Default::default();
-    let mut logo = Default::default();
-    let mut icon = Default::default();
+fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, _attributes: &[Attribute], session: AtomSession) -> DecodeResult<feed::Source> {
+    define_variables!(
+        id: required,
+        title: required,
+        links: multiple,
+        updated_at: required,
+        authors: multiple,
+        contributors: multiple,
+        categories: multiple,
+        rights: optional,
+        subtitle: optional,
+        generator: optional,
+        logo: optional,
+        icon: optional
+    );
 
-    try!(parser.each_child(|p| {
-        p.read_event(|p, event| {
-            match event {
-                StartElement { ref name, ref attributes, .. }
-                if ["id", "icon", "logo"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_icon(p, attributes.as_slice(), session.clone()));
-                    match name.local_name.as_slice() {
-                        "id" => id = Some(result),
-                        "icon" => icon = Some(result),
-                        "logo" => logo = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["title", "rights", "subtitle"].contains(&name.local_name.as_slice()) => {
-                    let result = try!(parse_text_construct(p, attributes.as_slice()));
-                    match name.local_name.as_slice() {
-                        "title" => title = Some(result),
-                        "rights" => rights = Some(result),
-                        "subtitle" => subtitle = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if ["author", "contributor"].contains(&name.local_name.as_slice()) => {
-                    match try!(parse_person_construct(p, attributes.as_slice(), session.clone())) {
-                        Some(result) => match name.local_name.as_slice() {
-                            "author" => authors.push(result),
-                            "contributor" => contributors.push(result),
-                            x => unexpected!(x),
-                        },
-                        None => { }
-                    }
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "link" == name.local_name.as_slice() => {
-                    let result = try!(parse_link(attributes.as_slice(), session.clone()));
-                    links.push(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "updated" == name.local_name.as_slice() => {
-                    let result = try!(parse_datetime(p));
-                    updated_at = Some(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "category" == name.local_name.as_slice() => {
-                    let result = try!(parse_category(attributes.as_slice()));
-                    categories.push(result);
-                }
-                StartElement { ref name, ref attributes, .. }
-                if "generator" == name.local_name.as_slice() => {
-                    let result = try!(parse_generator(p, attributes.as_slice(), session.clone()));
-                    generator = Some(result);
-                }
-
-                _otherwise => { }
-            }
-            Ok(())
-        })
-    }));
+    parse_fields! { (parser, session)
+        "id" => id: required by parse_icon;
+        "title" => title: required by parse_text_construct;
+        "link" => links: multiple by parse_link;
+        "updated" => updated_at: required by parse_datetime;
+        "author" => authors: multiple by parse_person_construct;
+        "contributor" => contributors: multiple by parse_person_construct;
+        "category" => categories: multiple by parse_category;
+        "rights" => rights: optional by parse_text_construct;
+        "subtitle" => subtitle: optional by parse_text_construct;
+        "generator" => generator: optional by parse_generator;
+        "logo" => logo: optional by parse_icon;
+        "icon" => icon: optional by parse_icon;
+    }
 
     let source = feed::Source {
         metadata: feed::Metadata {
@@ -353,8 +323,8 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, session: AtomSession) -> 
             title: title.unwrap(),
             links: feed::LinkList(links),
             updated_at: updated_at.unwrap(),
-            authors: authors,
-            contributors: contributors,
+            authors: authors.move_iter().filter_map(|v| v).collect(),
+            contributors: contributors.move_iter().filter_map(|v| v).collect(),
             categories: categories,
             rights: rights,
         },
@@ -406,7 +376,7 @@ fn parse_icon<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], m
     Ok(session.xml_base.append(try!(read_whole_text(parser)).as_slice()))
 }
 
-fn parse_text_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute]) -> DecodeResult<feed::Text> {
+fn parse_text_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], _session: AtomSession) -> DecodeResult<feed::Text> {
     let text_type = match find_from_attr(attributes, "type") {
         Some("text/plaln") | Some("text") => feed::text_type::Text,
         Some("text/html") | Some("html") => feed::text_type::Html,
@@ -459,7 +429,7 @@ fn parse_person_construct<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[A
     Ok(Some(feed::Person { name: name, uri: uri, email: email }))
 }
 
-fn parse_link(attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Link> {
+fn parse_link<B: Buffer>(_parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Link> {
     reset_xml_base(attributes, &mut session);
     Ok(feed::Link {
         uri: f!(attributes, "href"),
@@ -471,14 +441,14 @@ fn parse_link(attributes: &[Attribute], mut session: AtomSession) -> DecodeResul
     })
 }
 
-fn parse_datetime<B: Buffer>(parser: &mut XmlDecoder<B>) -> DecodeResult<DateTime<FixedOffset>> {
+fn parse_datetime<B: Buffer>(parser: &mut XmlDecoder<B>, _attributes: &[Attribute], _session: AtomSession) -> DecodeResult<DateTime<FixedOffset>> {
     match schema::RFC3339.decode(try!(read_whole_text(parser)).as_slice()) {
         Ok(v) => Ok(v),
         Err(e) => Err(SchemaError(e)),
     }
 }
 
-fn parse_category(attributes: &[Attribute]) -> DecodeResult<feed::Category> {
+fn parse_category<B: Buffer>(_parser: &mut XmlDecoder<B>, attributes: &[Attribute], _session: AtomSession) -> DecodeResult<feed::Category> {
     Ok(feed::Category {
         term: f!(attributes, "term"),
         scheme_uri: find_from_attr(attributes, "scheme").map(|v| v.to_string()),
@@ -498,7 +468,7 @@ fn parse_generator<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribut
 fn parse_content<B: Buffer>(parser: &mut XmlDecoder<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Content> {
     reset_xml_base(attributes, &mut session);
     Ok(feed::Content {
-        text: try!(parse_text_construct(parser, attributes)),
+        text: try!(parse_text_construct(parser, attributes, session.clone())),
         source_uri: find_from_attr(attributes, "src").map(|v| v.to_string()),  // TODO
     })
 }
