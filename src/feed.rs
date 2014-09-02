@@ -1,3 +1,4 @@
+use std::default::Default;
 use std::fmt;
 
 use chrono::{DateTime, FixedOffset};
@@ -14,6 +15,19 @@ pub struct Feed {
     pub entries: Vec<Entry>,
 }
 
+impl Feed {
+    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Feed {
+        Feed {
+            source: Source::new_inherited(id, title, updated_at),
+            entries: Default::default(),
+        }
+    }
+
+    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Feed {
+        Feed::new(id, title, updated_at)
+    }
+}
+
 pub struct Entry {
     pub metadata: Metadata,
 
@@ -25,6 +39,24 @@ pub struct Entry {
     pub starred: Mark,
 }
 
+impl Entry {
+    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
+        Entry {
+            metadata: Metadata::new_inherited(id, title, updated_at),
+            published_at: Default::default(),
+            summary: Default::default(),
+            content: Default::default(),
+            source: Default::default(),
+            read: Default::default(),
+            starred: Default::default(),
+        }
+    }
+
+    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
+        Entry::new(id, title, updated_at)
+    }
+}
+
 pub struct Source {
     pub metadata: Metadata,
 
@@ -32,6 +64,22 @@ pub struct Source {
     pub generator: Option<Generator>,
     pub logo: Option<String>,
     pub icon: Option<String>,
+}
+
+impl Source {
+    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
+        Source {
+            metadata: Metadata::new_inherited(id, title, updated_at),
+            subtitle: Default::default(),
+            generator: Default::default(),
+            logo: Default::default(),
+            icon: Default::default(),
+        }
+    }
+
+    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
+        Source::new(id, title, updated_at)
+    }
 }
 
 pub struct Metadata {
@@ -43,6 +91,21 @@ pub struct Metadata {
     pub contributors: Vec<Person>,
     pub categories: Vec<Category>,
     pub rights: Option<Text>,
+}
+
+impl Metadata {
+    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Metadata {
+        Metadata {
+            id: id,
+            title: title,
+            links: LinkList(Default::default()),
+            updated_at: updated_at,
+            authors: Default::default(),
+            contributors: Default::default(),
+            categories: Default::default(),
+            rights: Default::default(),
+        }            
+    }
 }
 
 impl Mergeable for Entry {

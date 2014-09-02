@@ -209,25 +209,20 @@ fn parse_feed<B: Buffer>(parser: &mut XmlDecoder<B>, feed_url: &str, need_entrie
         })
     }));
 
-    let feed = feed::Feed {
-        source: feed::Source {
-            metadata: feed::Metadata {
-                id: id.unwrap_or_else(|| feed_url.to_string()),
-                title: title.unwrap(),
-                links: feed::LinkList(links),
-                updated_at: updated_at.unwrap(),
-                authors: authors,
-                contributors: contributors,
-                categories: categories,
-                rights: rights,
-            },
-            subtitle: subtitle,
-            generator: generator,
-            logo: logo,
-            icon: icon,
-        },
-        entries: entries,
-    };
+    let mut feed = feed::Feed::new(
+        id.unwrap_or_else(|| feed_url.to_string()),
+        title.unwrap(),
+        updated_at.unwrap());
+    feed.source.metadata.links = feed::LinkList(links);
+    feed.source.metadata.authors = authors;
+    feed.source.metadata.contributors = contributors;
+    feed.source.metadata.categories = categories;
+    feed.source.metadata.rights = rights;
+    feed.source.subtitle = subtitle;
+    feed.source.generator = generator;
+    feed.source.logo = logo;
+    feed.source.icon = icon;
+    feed.entries = entries;
     Ok(feed)
 }
 
@@ -244,9 +239,7 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, _attributes: &[Attribute],
         published_at: optional,
         summary: optional,
         content: optional,
-        source: optional,
-        read: required,
-        starred: required
+        source: optional
     );
 
     parse_fields! { (parser, session)
@@ -265,24 +258,19 @@ fn parse_entry<B: Buffer>(parser: &mut XmlDecoder<B>, _attributes: &[Attribute],
         "source"      => source: optional by parse_source;
     }
 
-    let entry = feed::Entry {
-        metadata: feed::Metadata {
-            id: id.unwrap(),
-            title: title.unwrap(),
-            links: feed::LinkList(links),
-            updated_at: updated_at.unwrap(),
-            authors: authors.move_iter().filter_map(|v| v).collect(),
-            contributors: contributors.move_iter().filter_map(|v| v).collect(),
-            categories: categories,
-            rights: rights,
-        },
-        published_at: published_at,
-        summary: summary,
-        content: content,
-        source: source,
-        read: read,
-        starred: starred,
-    };
+    let mut entry = feed::Entry::new(
+        id.unwrap(),
+        title.unwrap(),
+        updated_at.unwrap());
+    entry.metadata.links = feed::LinkList(links);
+    entry.metadata.authors.push_all_move(authors.move_iter().filter_map(|v| v).collect());
+    entry.metadata.contributors.push_all_move(contributors.move_iter().filter_map(|v| v).collect());
+    entry.metadata.categories.push_all_move(categories);
+    entry.metadata.rights = rights;
+    entry.published_at = published_at;
+    entry.summary = summary;
+    entry.content = content;
+    entry.source = source;
     Ok(entry)
 }
 
@@ -317,22 +305,19 @@ fn parse_source<B: Buffer>(parser: &mut XmlDecoder<B>, _attributes: &[Attribute]
         "icon" => icon: optional by parse_icon;
     }
 
-    let source = feed::Source {
-        metadata: feed::Metadata {
-            id: id.unwrap(),
-            title: title.unwrap(),
-            links: feed::LinkList(links),
-            updated_at: updated_at.unwrap(),
-            authors: authors.move_iter().filter_map(|v| v).collect(),
-            contributors: contributors.move_iter().filter_map(|v| v).collect(),
-            categories: categories,
-            rights: rights,
-        },
-        subtitle: subtitle,
-        generator: generator,
-        logo: logo,
-        icon: icon,
-    };
+    let mut source = feed::Source::new(
+        id.unwrap(),
+        title.unwrap(),
+        updated_at.unwrap());
+    source.metadata.links = feed::LinkList(links);
+    source.metadata.authors.push_all_move(authors.move_iter().filter_map(|v| v).collect());
+    source.metadata.contributors.push_all_move(contributors.move_iter().filter_map(|v| v).collect());
+    source.metadata.categories.push_all_move(categories);
+    source.metadata.rights = rights;
+    source.subtitle = subtitle;
+    source.generator = generator;
+    source.logo = logo;
+    source.icon = icon;
     Ok(source)
 }
 
