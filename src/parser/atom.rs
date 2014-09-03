@@ -8,8 +8,8 @@ use xml::common::{Name, Attribute};
 use super::base::{NestedEventReader, DecodeResult, AttributeNotFound, SchemaError};
 use super::base::events::{EndDocument, Element, Characters};
 use feed;
-use schema;
-use schema::Codec;
+use codecs;
+use codecs::Codec;
 
 static ATOM_XMLNS_SET: [&'static str, ..2] = [
     "http://www.w3.org/2005/Atom",
@@ -412,7 +412,7 @@ fn parse_link<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[Attribute]
 }
 
 fn parse_datetime<B: Buffer>(parser: NestedEventReader<B>, _attributes: &[Attribute], _session: AtomSession) -> DecodeResult<DateTime<FixedOffset>> {
-    match schema::RFC3339.decode(try!(read_whole_text(parser)).as_slice()) {
+    match codecs::RFC3339.decode(try!(read_whole_text(parser)).as_slice()) {
         Ok(v) => Ok(v),
         Err(e) => Err(SchemaError(e)),
     }

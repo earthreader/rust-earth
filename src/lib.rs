@@ -11,6 +11,7 @@ extern crate xml;
 
 pub mod macros;
 
+pub mod codecs;
 pub mod feed;
 pub mod parser;
 pub mod schema;
