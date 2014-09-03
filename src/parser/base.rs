@@ -91,6 +91,7 @@ pub mod events {
     use xml::common;
     use xml::common::{Name, Error, HasPosition, Attribute, XmlVersion};
     use xml::namespace::Namespace;
+    use xml::reader::events as x;
 
     use super::NestedEventReader;
 
@@ -116,6 +117,58 @@ pub mod events {
         Characters(String),
         Whitespace(String),
         Error(common::Error)
+    }
+
+    impl<'a, B> PartialEq for NestedEvent<'a, B> {
+        fn eq(&self, other: &NestedEvent<'a, B>) -> bool {
+            match (self, other) {
+                (&StartDocument { version: ref v1, encoding: ref e1, standalone: ref s1 },
+                 &StartDocument { version: ref v2, encoding: ref e2, standalone: ref s2 }) => {
+                    v1 == v2 && e1 == e2 && s1 == s2
+                }
+                (&EndDocument, &EndDocument) => { true }
+                (&ProcessingInstruction { name: ref n1, data: ref d1 },
+                 &ProcessingInstruction { name: ref n2, data: ref d2 }) => {
+                    n1 == n2 && d1 == d2
+                }
+                (&Element { name: ref n1, attributes: ref a1, namespace: ref ns1, .. },
+                 &Element { name: ref n2, attributes: ref a2, namespace: ref ns2, .. }) => {
+                    n1 == n2 && a1 == a2 && ns1 == ns2
+                }
+                (&CData(ref c1), &CData(ref c2)) => { c1 == c2 }
+                (&Comment(ref c1), &Comment(ref c2)) => { c1 == c2 }
+                (&Characters(ref c1), &Characters(ref c2)) => { c1 == c2 }
+                (&Whitespace(ref c1), &Whitespace(ref c2)) => { c1 == c2 }
+                (&Error(ref e1), &Error(ref e2)) => { e1 == e2 }
+                (_, _) => { false }
+            }
+        }
+    }
+
+    impl<'a, B> Equiv<x::XmlEvent> for NestedEvent<'a, B> {
+        fn equiv(&self, other: &x::XmlEvent) -> bool {
+            match (self, other) {
+                (&   StartDocument { version: ref v1, encoding: ref e1, standalone: ref s1 },
+                 &x::StartDocument { version: ref v2, encoding: ref e2, standalone: ref s2 }) => {
+                    v1 == v2 && e1 == e2 && s1 == s2
+                }
+                (&EndDocument, &x::EndDocument) => { true }
+                (&   ProcessingInstruction { name: ref n1, data: ref d1 },
+                 &x::ProcessingInstruction { name: ref n2, data: ref d2 }) => {
+                    n1 == n2 && d1 == d2
+                }
+                (&        Element { name: ref n1, attributes: ref a1, namespace: ref ns1, .. },
+                 &x::StartElement { name: ref n2, attributes: ref a2, namespace: ref ns2 }) => {
+                    n1 == n2 && a1 == a2 && ns1 == ns2
+                }
+                (&CData(ref c1), &x::CData(ref c2)) => { c1 == c2 }
+                (&Comment(ref c1), &x::Comment(ref c2)) => { c1 == c2 }
+                (&Characters(ref c1), &x::Characters(ref c2)) => { c1 == c2 }
+                (&Whitespace(ref c1), &x::Whitespace(ref c2)) => { c1 == c2 }
+                (&Error(ref e1), &x::Error(ref e2)) => { e1 == e2 }
+                (_, _) => { false }
+            }
+        }
     }
 
     impl<'a, B> fmt::Show for NestedEvent<'a, B> {
