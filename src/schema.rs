@@ -9,12 +9,11 @@ pub enum SchemaError {
     DecodeError(String),
 }
 
-
+pub trait Codec<T> {
+    fn encode(&self, value: &T, w: &mut Writer) -> SchemaResult<()>;
+    fn decode(&self, r: &str) -> SchemaResult<T>;
 }
 
 pub trait Mergeable {
     fn merge_entities(self, other: Self) -> Self;
-}
-
-
 }

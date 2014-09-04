@@ -9,7 +9,7 @@ use super::base::{NestedEventReader, DecodeResult, AttributeNotFound, SchemaErro
 use super::base::events::{EndDocument, Element, Characters};
 use feed;
 use codecs;
-use codecs::Codec;
+use schema::Codec;
 
 static ATOM_XMLNS_SET: [&'static str, ..2] = [
     "http://www.w3.org/2005/Atom",

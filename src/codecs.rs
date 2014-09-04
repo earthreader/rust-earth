@@ -3,12 +3,7 @@ use std::num::{Zero, div_rem};
 use chrono::{DateTime, FixedOffset};
 use chrono::{Timelike, Offset};
 
-use schema::{SchemaResult, EncodeError, DecodeError};
-
-pub trait Codec<T> {
-    fn encode(&self, value: &T, w: &mut Writer) -> SchemaResult<()>;
-    fn decode(&self, r: &str) -> SchemaResult<T>;
-}
+use schema::{SchemaResult, EncodeError, DecodeError, Codec};
 
 macro_rules! try_encode(
     ($e:expr) => (match $e { Ok(v) => v, Err(_e) => return Err(EncodeError) })
@@ -92,13 +87,12 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
 
 #[cfg(test)]
 mod test {
-    use super::Codec;
     use super::RFC3339;
     use std::io::MemWriter;
     use std::str;
     use chrono::{DateTime, FixedOffset};
     use chrono::{Offset};
-    use schema::SchemaError;
+    use schema::{SchemaError, Codec};
 
     fn sample_data() -> Vec<(&'static str, DateTime<FixedOffset>)> {
         vec![
