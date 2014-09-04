@@ -14,7 +14,7 @@ pub enum DecodeError {
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
 
-pub struct NestedEventReader<'a, B> {
+pub struct NestedEventReader<'a, B: 'a> {
     reader: &'a mut xml::EventReader<B>,
     finished: bool,
 }
@@ -95,7 +95,7 @@ pub mod events {
 
     use super::NestedEventReader;
 
-    pub enum NestedEvent<'a, B> {
+    pub enum NestedEvent<'a, B: 'a> {
         StartDocument {
             pub version: XmlVersion,
             pub encoding: String,
