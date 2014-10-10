@@ -1,5 +1,5 @@
 [package]
-name = "libearth-rust"
+name = "rust-earth"
 version = "0.0.1"
 authors = ["kroisse@gmail.com"]
 
