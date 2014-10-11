@@ -89,7 +89,7 @@ pub mod events {
     use std::fmt;
 
     use xml::common;
-    use xml::common::{Name, Error, HasPosition, Attribute, XmlVersion};
+    use xml::common::{Name, HasPosition, Attribute, XmlVersion};
     use xml::namespace::Namespace;
     use xml::reader::events as x;
 

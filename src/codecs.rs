@@ -69,7 +69,7 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
         };
         let mut microsecond = caps.name("microsecond").to_string();
         for _ in range(0, 6 - microsecond.len()) {
-            microsecond.push_char('0');
+            microsecond.push('0');
         }
         let dt = offset.ymd(
                 parse_field!(caps, "year"),
@@ -92,7 +92,7 @@ mod test {
     use std::str;
     use chrono::{DateTime, FixedOffset};
     use chrono::{Offset};
-    use schema::{SchemaError, Codec};
+    use schema::{Codec};
 
     fn sample_data() -> Vec<(&'static str, DateTime<FixedOffset>)> {
         vec![
@@ -127,7 +127,7 @@ mod test {
 
     fn to_string<T, C: Codec<T>>(codec: C, value: T) -> String {
         let mut w = MemWriter::new();
-        codec.encode(&value, &mut w);
+        codec.encode(&value, &mut w).unwrap();
         str::from_utf8(w.unwrap().as_slice()).unwrap().into_string()
     }
 

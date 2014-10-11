@@ -257,9 +257,9 @@ fn parse_entry<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attri
         title.unwrap(),
         updated_at.unwrap());
     entry.metadata.links = feed::LinkList(links);
-    entry.metadata.authors.push_all_move(authors.move_iter().filter_map(|v| v).collect());
-    entry.metadata.contributors.push_all_move(contributors.move_iter().filter_map(|v| v).collect());
-    entry.metadata.categories.push_all_move(categories);
+    entry.metadata.authors.extend(authors.into_iter().filter_map(|v| v));
+    entry.metadata.contributors.extend(contributors.into_iter().filter_map(|v| v));
+    entry.metadata.categories.extend(categories.into_iter());
     entry.metadata.rights = rights;
     entry.published_at = published_at;
     entry.summary = summary;
@@ -304,9 +304,9 @@ fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attr
         title.unwrap(),
         updated_at.unwrap());
     source.metadata.links = feed::LinkList(links);
-    source.metadata.authors.push_all_move(authors.move_iter().filter_map(|v| v).collect());
-    source.metadata.contributors.push_all_move(contributors.move_iter().filter_map(|v| v).collect());
-    source.metadata.categories.push_all_move(categories);
+    source.metadata.authors.extend(authors.into_iter().filter_map(|v| v));
+    source.metadata.contributors.extend(contributors.into_iter().filter_map(|v| v));
+    source.metadata.categories.extend(categories.into_iter());
     source.metadata.rights = rights;
     source.subtitle = subtitle;
     source.generator = generator;
@@ -316,7 +316,7 @@ fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attr
 }
 
 fn reset_xml_base(attributes: &[Attribute], session: &mut AtomSession) {
-    for new_base in get_xml_base(attributes.as_slice()).move_iter() {
+    for new_base in get_xml_base(attributes.as_slice()).into_iter() {
         session.xml_base = new_base.into_string();
     }
 }
@@ -349,7 +349,8 @@ macro_rules! f (
 
 fn parse_icon<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<String> {
     reset_xml_base(attributes, &mut session);
-    Ok(session.xml_base.append(try!(read_whole_text(parser)).as_slice()))
+    session.xml_base.push_str(try!(read_whole_text(parser)).as_slice());
+    Ok(session.xml_base)
 }
 
 fn parse_text_construct<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], _session: AtomSession) -> DecodeResult<feed::Text> {

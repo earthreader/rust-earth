@@ -1,5 +1,4 @@
 use std::default::Default;
-use std::fmt;
 
 use chrono::{DateTime, FixedOffset};
 
