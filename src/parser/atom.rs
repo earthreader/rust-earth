@@ -36,7 +36,7 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> Deco
                 let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
                     name.namespace_ref().map_or(false, |n| n == atom_xmlns)
                 }).unwrap();
-                let xml_base = get_xml_base(attributes.as_slice()).unwrap_or(feed_url);
+                let xml_base = get_xml_base(attributes[]).unwrap_or(feed_url);
                 let session = AtomSession { xml_base: xml_base.into_string(),
                                             element_ns: atom_xmlns.into_string() };
                 let feed_data = parse_feed(children, feed_url, need_entries, session);
@@ -56,11 +56,11 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> Deco
 fn get_xml_base<'a>(attributes: &'a [Attribute]) -> Option<&'a str> {
     attributes.iter().find(|&attr| {
         attr.name.namespace_ref().map_or(false, |ns| ns == XML_XMLNS)
-    }).map(|attr| attr.value.as_slice())
+    }).map(|attr| attr.value[])
 }
 
 fn name_matches<'a>(name: &'a Name, namespace: Option<&'a str>, local_name: &str) -> bool {
-    name.namespace.as_ref().map(|n| n.as_slice()) == namespace && name.local_name.as_slice() == local_name
+    name.namespace.as_ref().map(|n| n[]) == namespace && name.local_name[] == local_name
 }
 
 macro_rules! unexpected (
@@ -102,8 +102,8 @@ macro_rules! parse_fields (
                 Element { name, attributes, children, .. } => match name {
                     $(
                         Name { ref local_name, .. }
-                        if $attr == local_name.as_slice() => {
-                            let result = try!($func(children, attributes.as_slice(), $session.clone()));
+                        if $attr == local_name[] => {
+                            let result = try!($func(children, attributes[], $session.clone()));
                             assign_field!($var: $plurality, result);
                         }
                         )*
@@ -141,9 +141,9 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
         match event {
             Element { name, attributes, children, .. } => match name {
                 Name { ref local_name, .. }
-                if ["id", "icon", "logo"].contains(&local_name.as_slice()) => {
-                    let result = try!(parse_icon(children, attributes.as_slice(), session.clone()));
-                    match local_name.as_slice() {
+                if ["id", "icon", "logo"].contains(&local_name[]) => {
+                    let result = try!(parse_icon(children, attributes[], session.clone()));
+                    match local_name[] {
                         "id" => id = Some(result),
                         "icon" => icon = Some(result),
                         "logo" => logo = Some(result),
@@ -151,9 +151,9 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
                     }
                 }
                 Name { ref local_name, .. }
-                if ["title", "rights", "subtitle"].contains(&local_name.as_slice()) => {
-                    let result = try!(parse_text_construct(children, attributes.as_slice(), session.clone()));
-                    match local_name.as_slice() {
+                if ["title", "rights", "subtitle"].contains(&local_name[]) => {
+                    let result = try!(parse_text_construct(children, attributes[], session.clone()));
+                    match local_name[] {
                         "title" => title = Some(result),
                         "rights" => rights = Some(result),
                         "subtitle" => subtitle = Some(result),
@@ -161,9 +161,9 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
                     }
                 }
                 Name { ref local_name, .. }
-                if ["author", "contributor"].contains(&local_name.as_slice()) => {
-                    match try!(parse_person_construct(children, attributes.as_slice(), session.clone())) {
-                        Some(result) => match local_name.as_slice() {
+                if ["author", "contributor"].contains(&local_name[]) => {
+                    match try!(parse_person_construct(children, attributes[], session.clone())) {
+                        Some(result) => match local_name[] {
                             "author" => authors.push(result),
                             "contributor" => contributors.push(result),
                             x => unexpected!(x),
@@ -172,27 +172,27 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
                     }
                 }
                 Name { ref local_name, .. }
-                if "link" == local_name.as_slice() => {
-                    let result = try!(parse_link(children, attributes.as_slice(), session.clone()));
+                if "link" == local_name[] => {
+                    let result = try!(parse_link(children, attributes[], session.clone()));
                     links.push(result);
                 }
                 Name { ref local_name, .. }
-                if ["updated", "modified"].contains(&local_name.as_slice()) => {
-                    let result = try!(parse_datetime(children, attributes.as_slice(), session.clone()));
+                if ["updated", "modified"].contains(&local_name[]) => {
+                    let result = try!(parse_datetime(children, attributes[], session.clone()));
                     updated_at = Some(result);
                 }
                 Name { ref local_name, .. }
-                if "category" == local_name.as_slice() => {
-                    let result = try!(parse_category(children, attributes.as_slice(), session.clone()));
+                if "category" == local_name[] => {
+                    let result = try!(parse_category(children, attributes[], session.clone()));
                     categories.push(result);
                 }
                 Name { ref local_name, .. }
-                if "generator" == local_name.as_slice() => {
-                    let result = try!(parse_generator(children, attributes.as_slice(), session.clone()));
+                if "generator" == local_name[] => {
+                    let result = try!(parse_generator(children, attributes[], session.clone()));
                     generator = Some(result);
                 }
-                ref name if need_entries && name_matches(name, Some(session.element_ns.as_slice()), "entry") => {
-                    let result = try!(parse_entry(children, attributes.as_slice(), session.clone()));
+                ref name if need_entries && name_matches(name, Some(session.element_ns[]), "entry") => {
+                    let result = try!(parse_entry(children, attributes[], session.clone()));
                     entries.push(result);
                 }
 
@@ -316,7 +316,7 @@ fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attr
 }
 
 fn reset_xml_base(attributes: &[Attribute], session: &mut AtomSession) {
-    for new_base in get_xml_base(attributes.as_slice()).into_iter() {
+    for new_base in get_xml_base(attributes[]).into_iter() {
         session.xml_base = new_base.into_string();
     }
 }
@@ -325,7 +325,7 @@ fn read_whole_text<B: Buffer>(mut parser: NestedEventReader<B>) -> DecodeResult<
     let mut text = String::new();
     for_each!(event in parser.next() {
         match event {
-            Characters(s) => { text.push_str(s.as_slice()); }
+            Characters(s) => { text.push_str(s[]); }
             _ => { }
         }
     })
@@ -334,8 +334,8 @@ fn read_whole_text<B: Buffer>(mut parser: NestedEventReader<B>) -> DecodeResult<
 
 fn find_from_attr<'a>(attr: &'a [Attribute], key: &str) -> Option<&'a str> {
     attr.iter()
-        .find(|&attr| attr.name.local_name.as_slice() == key)
-        .map(|e| e.value.as_slice())
+        .find(|&attr| attr.name.local_name[] == key)
+        .map(|e| e.value[])
 }
 
 macro_rules! f (
@@ -349,7 +349,7 @@ macro_rules! f (
 
 fn parse_icon<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<String> {
     reset_xml_base(attributes, &mut session);
-    session.xml_base.push_str(try!(read_whole_text(parser)).as_slice());
+    session.xml_base.push_str(try!(read_whole_text(parser))[]);
     Ok(session.xml_base)
 }
 
@@ -379,11 +379,11 @@ fn parse_person_construct<B: Buffer>(mut parser: NestedEventReader<B>, attribute
     for_each!(event in parser.next() {
         match event {
             Element { name, children, .. } => {
-                if name_matches(&name, Some(session.element_ns.as_slice()), "name") {
+                if name_matches(&name, Some(session.element_ns[]), "name") {
                     person_name = Some(try!(read_whole_text(children)));
-                } else if name_matches(&name, Some(session.element_ns.as_slice()), "uri") {
+                } else if name_matches(&name, Some(session.element_ns[]), "uri") {
                     uri = Some(try!(read_whole_text(children)));
-                } else if name_matches(&name, Some(session.element_ns.as_slice()), "email") {
+                } else if name_matches(&name, Some(session.element_ns[]), "email") {
                     email = Some(try!(read_whole_text(children)));
                 }
             }
@@ -413,7 +413,7 @@ fn parse_link<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[Attribute]
 }
 
 fn parse_datetime<B: Buffer>(parser: NestedEventReader<B>, _attributes: &[Attribute], _session: AtomSession) -> DecodeResult<DateTime<FixedOffset>> {
-    match codecs::RFC3339.decode(try!(read_whole_text(parser)).as_slice()) {
+    match codecs::RFC3339.decode(try!(read_whole_text(parser))[]) {
         Ok(v) => Ok(v),
         Err(e) => Err(SchemaError(e)),
     }

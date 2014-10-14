@@ -32,7 +32,7 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
         let nsec = value.nanosecond();
         if nsec != 0 {
             let nsec = format!("{:06}", nsec);
-            try_encode!(write!(w, ".{}", nsec.as_slice().trim_right_chars('0')));
+            try_encode!(write!(w, ".{}", nsec[].trim_right_chars('0')));
         }
         let off_d = value.offset().local_minus_utc();
         if off_d.is_zero() {
@@ -79,7 +79,7 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
                 parse_field!(caps, "hour"),
                 parse_field!(caps, "minute"),
                 parse_field!(caps, "second"),
-                try_opt!(from_str(microsecond.as_slice()),
+                try_opt!(from_str(microsecond[]),
                          format!("invalid value for microsecond: {}", microsecond)));
         Ok(dt)
     }
@@ -128,13 +128,13 @@ mod test {
     fn to_string<T, C: Codec<T>>(codec: C, value: T) -> String {
         let mut w = MemWriter::new();
         codec.encode(&value, &mut w).unwrap();
-        str::from_utf8(w.unwrap().as_slice()).unwrap().into_string()
+        str::from_utf8(w.unwrap()[]).unwrap().into_string()
     }
 
     #[test]
     fn test_rfc3339_encode() {
         for &(rfc3339_str, dt) in sample_data().iter() {
-            assert_eq!(to_string(RFC3339, dt).as_slice(), rfc3339_str);
+            assert_eq!(to_string(RFC3339, dt)[], rfc3339_str);
             // TODO: assert (Rfc3339(prefer_utc=True).encode(dt) == codec.encode(dt.astimezone(utc)))
         }
     }
