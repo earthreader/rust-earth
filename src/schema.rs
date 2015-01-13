@@ -1,7 +1,7 @@
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum SchemaError {
     DescriptorConflict,
     IntegrityError,

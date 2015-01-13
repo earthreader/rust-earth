@@ -1,27 +1,28 @@
-use std::num::{Zero, div_rem};
+use std::str::FromStr;
 
 use chrono::{DateTime, FixedOffset};
 use chrono::{Timelike, Offset};
 
-use schema::{SchemaResult, EncodeError, DecodeError, Codec};
+use schema::{SchemaResult, Codec};
+use schema::SchemaError::{EncodeError, DecodeError};
 
-macro_rules! try_encode(
+macro_rules! try_encode {
     ($e:expr) => (match $e { Ok(v) => v, Err(_e) => return Err(EncodeError) })
-)
+}
 
-macro_rules! try_opt(
+macro_rules! try_opt {
     ($e:expr, $msg:expr) => (match $e { Some(e) => e, None => return Err(DecodeError($msg)) })
-)
+}
 
-macro_rules! parse_field(
+macro_rules! parse_field {
     ($caps:expr, $field:expr) => (
         {
             let value = $caps.name($field);
-            try_opt!(from_str(value),
-                     format!(concat!("invalid value for ", $field, ": {}"), value))
+            try_opt!(value.and_then(FromStr::from_str),
+                     format!(concat!("invalid value for ", $field, ": {:?}"), value))
         }
     )
-)
+}
 
 pub struct RFC3339;
 
@@ -32,14 +33,15 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
         let nsec = value.nanosecond();
         if nsec != 0 {
             let nsec = format!("{:06}", nsec);
-            try_encode!(write!(w, ".{}", nsec[].trim_right_chars('0')));
+            try_encode!(write!(w, ".{}", nsec.trim_right_matches('0')));
         }
         let off_d = value.offset().local_minus_utc();
         if off_d.is_zero() {
             try_encode!(write!(w, "Z"));
         } else {
-            let (h, m) = div_rem(off_d.num_minutes(), 60);
-            try_encode!(write!(w, "{h:+03d}:{m:02d}", h=h, m=m));
+            let min = off_d.num_minutes();
+            let (h, m) = (min / 60, min % 60);
+            try_encode!(write!(w, "{h:+03}:{m:02}", h=h, m=m));
         }
         Ok(())
     }
@@ -59,15 +61,15 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
             None => { return Err(DecodeError(format!("\"{}\" is not valid RFC 3339 date time string", r))); }
             Some(c) => c,
         };
-        let offset = if caps.name("tz_offset").len() > 0 {
-            let tz_hour: i32 = from_str(caps.name("tz_offset_hour")).unwrap();
-            let tz_minute = from_str(caps.name("tz_offset_minute")).unwrap();
-            let tz_sign = if caps.name("tz_offset_sign") == "+" { 1 } else { -1 };
+        let offset = if caps.name("tz_offset").map_or(false, |x| x.len() > 0) {
+            let tz_hour: i32 = caps.name("tz_offset_hour").and_then(FromStr::from_str).unwrap();
+            let tz_minute = caps.name("tz_offset_minute").and_then(FromStr::from_str).unwrap();
+            let tz_sign = if caps.name("tz_offset_sign").map_or(false, |x| x == "+") { 1 } else { -1 };
             FixedOffset::east(tz_sign * (tz_hour * 60 + tz_minute) * 60)
         } else {
             FixedOffset::east(0)  // UTC
         };
-        let mut microsecond = caps.name("microsecond").to_string();
+        let mut microsecond = caps.name("microsecond").unwrap_or("").to_string();
         for _ in range(0, 6 - microsecond.len()) {
             microsecond.push('0');
         }
@@ -79,7 +81,7 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
                 parse_field!(caps, "hour"),
                 parse_field!(caps, "minute"),
                 parse_field!(caps, "second"),
-                try_opt!(from_str(microsecond[]),
+                try_opt!(FromStr::from_str(&*microsecond),
                          format!("invalid value for microsecond: {}", microsecond)));
         Ok(dt)
     }
@@ -119,22 +121,22 @@ mod test {
      */
     #[test]
     fn test_rfc3339_decode() {
-        for &(rfc3339_str, tm) in sample_data().iter() {
+        for &(rfc3339_str, ref tm) in sample_data().iter() {
             let parsed = RFC3339.decode(rfc3339_str).unwrap();
-            assert_eq!(parsed, tm);
+            assert_eq!(parsed, *tm);
         }
     }
 
     fn to_string<T, C: Codec<T>>(codec: C, value: T) -> String {
         let mut w = MemWriter::new();
         codec.encode(&value, &mut w).unwrap();
-        str::from_utf8(w.unwrap()[]).unwrap().into_string()
+        str::from_utf8(w.get_ref()).unwrap().to_string()
     }
 
     #[test]
     fn test_rfc3339_encode() {
-        for &(rfc3339_str, dt) in sample_data().iter() {
-            assert_eq!(to_string(RFC3339, dt)[], rfc3339_str);
+        for &(rfc3339_str, ref dt) in sample_data().iter() {
+            assert_eq!(to_string(RFC3339, (*dt).clone()), rfc3339_str);
             // TODO: assert (Rfc3339(prefer_utc=True).encode(dt) == codec.encode(dt.astimezone(utc)))
         }
     }

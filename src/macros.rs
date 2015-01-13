@@ -1,12 +1,12 @@
-#![macro_escape]
+#![macro_use]
 
-macro_rules! for_each(
-    ($e:ident in $it:expr $body:expr) => (
+macro_rules! for_each {
+    ($e:ident in $it:expr { $($body:stmt)* }) => (
         loop {
             match $it {
-                Some($e) => $body,
+                Some($e) => { $($body)* },
                 None => break,
             }
         }
     )
-)
+}

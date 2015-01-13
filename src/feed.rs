@@ -4,7 +4,6 @@ use chrono::{DateTime, FixedOffset};
 
 use schema::{Mergeable};
 
-pub use self::elemental::text_type;
 pub use self::elemental::{TextType, Text, Person, Link, LinkList, Category, Content, Generator, Mark};
 
 
@@ -31,7 +30,7 @@ pub trait FeedMethods {
     fn get_feed<'a>(&'a self) -> &'a Feed;
     fn mut_feed<'a>(&'a mut self) -> &'a mut Feed;
 
-    fn get_entries<'a>(&'a self) -> &'a [Entry] { self.get_feed().entries[] }
+    fn get_entries<'a>(&'a self) -> &'a [Entry] { &*self.get_feed().entries }
     fn mut_entries<'a>(&'a mut self) -> &'a mut Vec<Entry> { &mut self.mut_feed().entries }
 }
 
@@ -114,8 +113,8 @@ pub trait SourceMethods {
 
     fn get_subtitle<'a>(&'a self) -> Option<&'a Text> { self.get_source().subtitle.as_ref() }
     fn get_generator<'a>(&'a self) -> Option<&'a Generator> { self.get_source().generator.as_ref() }
-    fn get_logo<'a>(&'a self) -> Option<&'a str> { self.get_source().logo.as_ref().map(|v| v[]) }
-    fn get_icon<'a>(&'a self) -> Option<&'a str> { self.get_source().icon.as_ref().map(|v| v[]) }
+    fn get_logo<'a>(&'a self) -> Option<&'a str> { self.get_source().logo.as_ref().map(|v| &**v) }
+    fn get_icon<'a>(&'a self) -> Option<&'a str> { self.get_source().icon.as_ref().map(|v| &**v) }
 }
 
 impl SourceMethods for Source {
@@ -163,13 +162,13 @@ impl Mergeable for Entry {
 pub trait MetadataMethods {
     fn get_metadata<'a>(&'a self) -> &'a Metadata;
 
-    fn get_id<'a>(&'a self) -> &'a str { self.get_metadata().id[] }
+    fn get_id<'a>(&'a self) -> &'a str { &*self.get_metadata().id }
     fn get_title<'a>(&'a self) -> &'a Text { &self.get_metadata().title }
     fn get_links<'a>(&'a self) -> &'a LinkList { &self.get_metadata().links }
     fn get_updated_at<'a>(&'a self) -> &'a DateTime<FixedOffset> { &self.get_metadata().updated_at }
-    fn get_authors<'a>(&'a self) -> &'a [Person] { self.get_metadata().authors[] }
-    fn get_contributors<'a>(&'a self) -> &'a [Person] { self.get_metadata().contributors[] }
-    fn get_categories<'a>(&'a self) -> &'a [Category] { self.get_metadata().categories[] }
+    fn get_authors<'a>(&'a self) -> &'a [Person] { &*self.get_metadata().authors }
+    fn get_contributors<'a>(&'a self) -> &'a [Person] { &*self.get_metadata().contributors }
+    fn get_categories<'a>(&'a self) -> &'a [Category] { &*self.get_metadata().categories }
     fn get_rights<'a>(&'a self) -> Option<&'a Text> { self.get_metadata().rights.as_ref() }
 }
 
@@ -198,11 +197,7 @@ mod elemental {
 
     use schema::{Mergeable};
 
-    pub use self::text_type::TextType;
-
-    pub mod text_type {
-        pub enum TextType { Text, Html }
-    }
+    pub enum TextType { Text, Html }
 
     pub struct Text {
         pub type_: TextType,
@@ -244,20 +239,21 @@ mod elemental {
         pub value: String,
     }
 
-    #[deriving(Default)]
+    #[derive(Default)]
     pub struct Mark {
         pub marked: bool,
         pub updated_at: Option<DateTime<FixedOffset>>,
     }
 
     impl fmt::Show for Mark {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
-            write!(fmt, "Mark {{ marked: {}, updated_at: {} }}", self.marked, self.updated_at)
+        fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            write!(fmt, "Mark {{ marked: {:?}, updated_at: {:?} }}", self.marked, self.updated_at)
         }
     }
 
     impl Mergeable for Mark {
         fn merge_entities(self, other: Mark) -> Mark {
+            use std::cmp::Ordering::Less;
             match self.updated_at.cmp(&other.updated_at) {
                 Less => other,
                 _    => self,

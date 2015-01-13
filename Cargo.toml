@@ -7,11 +7,10 @@ authors = ["kroisse@gmail.com"]
 name = "earth"
 path = "src/lib.rs"
 
-[dependencies.rust-xml]
-git = "https://github.com/netvl/rust-xml.git"
-
-[dependencies.http]
-git = "https://github.com/chris-morgan/rust-http.git"
-
-[dependencies.chrono]
-git = "https://github.com/lifthrasiir/rust-chrono.git"
+[dependencies]
+chrono = "*"
+hyper = "*"
+regex = "*"
+regex_macros = "*"
+time = "*"
+xml-rs = "*"

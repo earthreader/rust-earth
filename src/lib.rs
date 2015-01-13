@@ -1,6 +1,6 @@
-#![feature(phase, struct_variant, macro_rules, unsafe_destructor, slicing_syntax)]
+#![feature(plugin, unsafe_destructor, slicing_syntax)]
 
-#[phase(plugin)]
+#[plugin]
 extern crate regex_macros;
 
 extern crate regex;

@@ -1,17 +1,20 @@
+use std::borrow::ToOwned;
 use std::default::Default;
-use std::from_str::from_str;
+use std::str::FromStr;
 
 use chrono::{DateTime, FixedOffset};
 use xml;
-use xml::common::{Name, Attribute};
+use xml::name::OwnedName;
+use xml::attribute::OwnedAttribute;
 
-use super::base::{NestedEventReader, DecodeResult, AttributeNotFound, SchemaError};
-use super::base::events::{EndDocument, Element, Characters};
+use super::base::{NestedEventReader, DecodeResult};
+use super::base::DecodeError::{AttributeNotFound, SchemaError};
+use super::base::NestedEvent::{EndDocument, Element, Characters};
 use feed;
 use codecs;
 use schema::Codec;
 
-static ATOM_XMLNS_SET: [&'static str, ..2] = [
+static ATOM_XMLNS_SET: [&'static str; 2] = [
     "http://www.w3.org/2005/Atom",
     "http://purl.org/atom/ns#",
 ];
@@ -20,7 +23,7 @@ static XML_XMLNS: &'static str = "http://www.w3.org/XML/1998/namespace";
 
 pub struct CrawlerHint;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct AtomSession {
     xml_base: String,
     element_ns: String,
@@ -34,76 +37,67 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> Deco
         match event {
             Element { name, attributes, children, .. } => {
                 let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
-                    name.namespace_ref().map_or(false, |n| n == atom_xmlns)
+                    name.namespace_as_ref().map_or(false, |n| n == atom_xmlns)
                 }).unwrap();
-                let xml_base = get_xml_base(attributes[]).unwrap_or(feed_url);
-                let session = AtomSession { xml_base: xml_base.into_string(),
-                                            element_ns: atom_xmlns.into_string() };
+                let xml_base = get_xml_base(&*attributes).unwrap_or(feed_url);
+                let session = AtomSession { xml_base: xml_base.to_string(),
+                                            element_ns: atom_xmlns.to_string() };
                 let feed_data = parse_feed(children, feed_url, need_entries, session);
                 result = Some(feed_data);
             }
-            EndDocument => { fail!(); }
+            EndDocument => { panic!(); }
             _ => { }
         }
-    })
+    });
     match result {
         Some(Ok(r)) => Ok((r, None)),
         Some(Err(e)) => Err(e),
-        None => Err(super::base::NoResult),
+        None => Err(super::base::DecodeError::NoResult),
     }
 }
 
-fn get_xml_base<'a>(attributes: &'a [Attribute]) -> Option<&'a str> {
+fn get_xml_base<'a>(attributes: &'a [OwnedAttribute]) -> Option<&'a str> {
     attributes.iter().find(|&attr| {
-        attr.name.namespace_ref().map_or(false, |ns| ns == XML_XMLNS)
-    }).map(|attr| attr.value[])
+        attr.name.namespace_as_ref().map_or(false, |ns| ns == XML_XMLNS)
+    }).map(|attr| &*attr.value)
 }
 
-fn name_matches<'a>(name: &'a Name, namespace: Option<&'a str>, local_name: &str) -> bool {
-    name.namespace.as_ref().map(|n| n[]) == namespace && name.local_name[] == local_name
+fn name_matches<'a>(name: &'a OwnedName, namespace: Option<&'a str>, local_name: &str) -> bool {
+    name.namespace_as_ref().map(|n| &*n) == namespace && name.local_name == local_name
 }
 
-macro_rules! unexpected (
-    ($name:expr) => ( fail!("Unexpected field: {}", $name) )
-)
+macro_rules! unexpected {
+    ($name:expr) => ( panic!("Unexpected field: {}", $name) )
+}
 
-macro_rules! parse_schema (
-    { $parser:expr, $session:expr, $result:ty; $($var:ident as $attr:ident by $func:expr;)* } => {
-        define_variables!($($var),*);
-        parse_fields! { $parser; $($var as $attr by $func;)* };
-        let result = build_data!($result_ty);
-        Ok(result)
-    }
-)
-
-macro_rules! define_variables (
+macro_rules! define_variables {
     ($($var:ident: $plurality:ident),+) => {
         let gen_names!($($var),+) = gen_defaults!($($var: $plurality),*);
     }
-)
+}
 
-macro_rules! gen_names (
+macro_rules! gen_names {
     ($($var:ident),+) => ( ($( mut $var ),+) )
-)
+}
 
-macro_rules! gen_defaults (
+macro_rules! gen_defaults {
     ($($var:ident: $plurality:ident),+) => ( ($( gen_default!($var, $plurality) ),+) )
-)
+}
 
-macro_rules! gen_default (
+macro_rules! gen_default {
     ($var:ident, multiple)         => ( Vec::new() );
     ($var:ident, $plurality:ident) => ( Default::default() )
-)
+}
 
-macro_rules! parse_fields (
+macro_rules! parse_fields {
     { ($parser:expr, $session:expr) $($attr:expr => $var:ident: $plurality:ident by $func:expr;)* } => {
         for_each!(event in $parser.next() {
             match event {
                 Element { name, attributes, children, .. } => match name {
                     $(
-                        Name { ref local_name, .. }
-                        if $attr == local_name[] => {
-                            let result = try!($func(children, attributes[], $session.clone()));
+                        OwnedName { ref local_name, .. }
+                        if $attr == &**local_name => {
+                            let result = try!($func(children, &*attributes, $session.clone()));
                             assign_field!($var: $plurality, result);
                         }
                         )*
@@ -113,12 +107,12 @@ macro_rules! parse_fields (
             }
         })
     }
-)
+}
 
-macro_rules! assign_field (
+macro_rules! assign_field {
     ($var:ident: multiple, $value:expr) => ( $var.push($value) );
     ($var:ident: $p:ident, $value:expr) => ( $var = Some($value) )
-)
+}
 
 fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_entries: bool, session: AtomSession) -> DecodeResult<feed::Feed> {
     define_variables!(
@@ -140,30 +134,30 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
     for_each!(event in parser.next() {
         match event {
             Element { name, attributes, children, .. } => match name {
-                Name { ref local_name, .. }
-                if ["id", "icon", "logo"].contains(&local_name[]) => {
-                    let result = try!(parse_icon(children, attributes[], session.clone()));
-                    match local_name[] {
+                OwnedName { ref local_name, .. }
+                if ["id", "icon", "logo"].contains(&&**local_name) => {
+                    let result = try!(parse_icon(children, &*attributes, session.clone()));
+                    match &**local_name {
                         "id" => id = Some(result),
                         "icon" => icon = Some(result),
                         "logo" => logo = Some(result),
                         x => unexpected!(x),
                     }
                 }
-                Name { ref local_name, .. }
-                if ["title", "rights", "subtitle"].contains(&local_name[]) => {
-                    let result = try!(parse_text_construct(children, attributes[], session.clone()));
-                    match local_name[] {
+                OwnedName { ref local_name, .. }
+                if ["title", "rights", "subtitle"].contains(&&**local_name) => {
+                    let result = try!(parse_text_construct(children, &*attributes, session.clone()));
+                    match &**local_name {
                         "title" => title = Some(result),
                         "rights" => rights = Some(result),
                         "subtitle" => subtitle = Some(result),
                         x => unexpected!(x),
                     }
                 }
-                Name { ref local_name, .. }
-                if ["author", "contributor"].contains(&local_name[]) => {
-                    match try!(parse_person_construct(children, attributes[], session.clone())) {
-                        Some(result) => match local_name[] {
+                OwnedName { ref local_name, .. }
+                if ["author", "contributor"].contains(&&**local_name) => {
+                    match try!(parse_person_construct(children, &*attributes, session.clone())) {
+                        Some(result) => match &**local_name {
                             "author" => authors.push(result),
                             "contributor" => contributors.push(result),
                             x => unexpected!(x),
@@ -171,28 +165,28 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
                         None => { }
                     }
                 }
-                Name { ref local_name, .. }
-                if "link" == local_name[] => {
-                    let result = try!(parse_link(children, attributes[], session.clone()));
+                OwnedName { ref local_name, .. }
+                if *local_name == "link" => {
+                    let result = try!(parse_link(children, &*attributes, session.clone()));
                     links.push(result);
                 }
-                Name { ref local_name, .. }
-                if ["updated", "modified"].contains(&local_name[]) => {
-                    let result = try!(parse_datetime(children, attributes[], session.clone()));
+                OwnedName { ref local_name, .. }
+                if ["updated", "modified"].contains(&&**local_name) => {
+                    let result = try!(parse_datetime(children, &*attributes, session.clone()));
                     updated_at = Some(result);
                 }
-                Name { ref local_name, .. }
-                if "category" == local_name[] => {
-                    let result = try!(parse_category(children, attributes[], session.clone()));
+                OwnedName { ref local_name, .. }
+                if *local_name == "category" => {
+                    let result = try!(parse_category(children, &*attributes, session.clone()));
                     categories.push(result);
                 }
-                Name { ref local_name, .. }
-                if "generator" == local_name[] => {
-                    let result = try!(parse_generator(children, attributes[], session.clone()));
+                OwnedName { ref local_name, .. }
+                if *local_name == "generator" => {
+                    let result = try!(parse_generator(children, &*attributes, session.clone()));
                     generator = Some(result);
                 }
-                ref name if need_entries && name_matches(name, Some(session.element_ns[]), "entry") => {
-                    let result = try!(parse_entry(children, attributes[], session.clone()));
+                ref name if need_entries && name_matches(name, Some(&*session.element_ns), "entry") => {
+                    let result = try!(parse_entry(children, &*attributes, session.clone()));
                     entries.push(result);
                 }
 
@@ -201,7 +195,7 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
 
             _otherwise => { }
         }
-    })
+    });
 
     let mut feed = feed::Feed::new(
         id.unwrap_or_else(|| feed_url.to_string()),
@@ -220,7 +214,7 @@ fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_
     Ok(feed)
 }
 
-fn parse_entry<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attribute], session: AtomSession) -> DecodeResult<feed::Entry> {
+fn parse_entry<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[OwnedAttribute], session: AtomSession) -> DecodeResult<feed::Entry> {
     define_variables!(
         id: required,
         title: required,
@@ -268,7 +262,7 @@ fn parse_entry<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attri
     Ok(entry)
 }
 
-fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attribute], session: AtomSession) -> DecodeResult<feed::Source> {
+fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[OwnedAttribute], session: AtomSession) -> DecodeResult<feed::Source> {
     define_variables!(
         id: required,
         title: required,
@@ -315,9 +309,9 @@ fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[Attr
     Ok(source)
 }
 
-fn reset_xml_base(attributes: &[Attribute], session: &mut AtomSession) {
-    for new_base in get_xml_base(attributes[]).into_iter() {
-        session.xml_base = new_base.into_string();
+fn reset_xml_base(attributes: &[OwnedAttribute], session: &mut AtomSession) {
+    for new_base in get_xml_base(&*attributes).into_iter() {
+        session.xml_base = new_base.to_owned();
     }
 }
 
@@ -325,40 +319,40 @@ fn read_whole_text<B: Buffer>(mut parser: NestedEventReader<B>) -> DecodeResult<
     let mut text = String::new();
     for_each!(event in parser.next() {
         match event {
-            Characters(s) => { text.push_str(s[]); }
+            Characters(s) => { text.push_str(&*s); }
             _ => { }
         }
-    })
+    });
     Ok(text)
 }
 
-fn find_from_attr<'a>(attr: &'a [Attribute], key: &str) -> Option<&'a str> {
+fn find_from_attr<'a>(attr: &'a [OwnedAttribute], key: &str) -> Option<&'a str> {
     attr.iter()
-        .find(|&attr| attr.name.local_name[] == key)
-        .map(|e| e.value[])
+        .find(|&attr| attr.name.local_name == key)
+        .map(|e| &*e.value)
 }
 
-macro_rules! f (
+macro_rules! f {
     ($attr:expr, $k:expr) => (
         match find_from_attr($attr, $k) {
             Some(v) => { v.to_string() }
             None => { return Err(AttributeNotFound($k.to_string())); }
         }
     )
-)
+}
 
-fn parse_icon<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<String> {
+fn parse_icon<B: Buffer>(parser: NestedEventReader<B>, attributes: &[OwnedAttribute], mut session: AtomSession) -> DecodeResult<String> {
     reset_xml_base(attributes, &mut session);
-    session.xml_base.push_str(try!(read_whole_text(parser))[]);
+    session.xml_base.push_str(&*try!(read_whole_text(parser)));
     Ok(session.xml_base)
 }
 
-fn parse_text_construct<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], _session: AtomSession) -> DecodeResult<feed::Text> {
+fn parse_text_construct<B: Buffer>(parser: NestedEventReader<B>, attributes: &[OwnedAttribute], _session: AtomSession) -> DecodeResult<feed::Text> {
     let text_type = match find_from_attr(attributes, "type") {
-        Some("text/plaln") | Some("text") => feed::text_type::Text,
-        Some("text/html") | Some("html") => feed::text_type::Html,
-        Some(_) => { feed::text_type::Text },  // TODO
-        None => feed::text_type::Text,
+        Some("text/plaln") | Some("text") => feed::TextType::Text,
+        Some("text/html") | Some("html") => feed::TextType::Html,
+        Some(_) => { feed::TextType::Text },  // TODO
+        None => feed::TextType::Text,
     };
     let text = feed::Text {
         type_: text_type,
@@ -370,7 +364,7 @@ fn parse_text_construct<B: Buffer>(parser: NestedEventReader<B>, attributes: &[A
     Ok(text)
 }
 
-fn parse_person_construct<B: Buffer>(mut parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<Option<feed::Person>> {
+fn parse_person_construct<B: Buffer>(mut parser: NestedEventReader<B>, attributes: &[OwnedAttribute], mut session: AtomSession) -> DecodeResult<Option<feed::Person>> {
     reset_xml_base(attributes, &mut session);
     let mut person_name = Default::default();
     let mut uri = Default::default();
@@ -379,17 +373,17 @@ fn parse_person_construct<B: Buffer>(mut parser: NestedEventReader<B>, attribute
     for_each!(event in parser.next() {
         match event {
             Element { name, children, .. } => {
-                if name_matches(&name, Some(session.element_ns[]), "name") {
+                if name_matches(&name, Some(&*session.element_ns), "name") {
                     person_name = Some(try!(read_whole_text(children)));
-                } else if name_matches(&name, Some(session.element_ns[]), "uri") {
+                } else if name_matches(&name, Some(&*session.element_ns), "uri") {
                     uri = Some(try!(read_whole_text(children)));
-                } else if name_matches(&name, Some(session.element_ns[]), "email") {
+                } else if name_matches(&name, Some(&*session.element_ns), "email") {
                     email = Some(try!(read_whole_text(children)));
                 }
             }
             _ => { }
         }
-    })
+    });
     let name = match person_name {
         Some(n) => n,
         None => match uri.clone().or_else(|| email.clone()) {
@@ -400,7 +394,7 @@ fn parse_person_construct<B: Buffer>(mut parser: NestedEventReader<B>, attribute
     Ok(Some(feed::Person { name: name, uri: uri, email: email }))
 }
 
-fn parse_link<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Link> {
+fn parse_link<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[OwnedAttribute], mut session: AtomSession) -> DecodeResult<feed::Link> {
     reset_xml_base(attributes, &mut session);
     Ok(feed::Link {
         uri: f!(attributes, "href"),
@@ -408,18 +402,18 @@ fn parse_link<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[Attribute]
         mimetype: find_from_attr(attributes, "type").map(|v| v.to_string()),
         language: find_from_attr(attributes, "hreflang").map(|v| v.to_string()),
         title: find_from_attr(attributes, "title").map(|v| v.to_string()),
-        byte_size: find_from_attr(attributes, "length").and_then(from_str),
+        byte_size: find_from_attr(attributes, "length").and_then(FromStr::from_str),
     })
 }
 
-fn parse_datetime<B: Buffer>(parser: NestedEventReader<B>, _attributes: &[Attribute], _session: AtomSession) -> DecodeResult<DateTime<FixedOffset>> {
-    match codecs::RFC3339.decode(try!(read_whole_text(parser))[]) {
+fn parse_datetime<B: Buffer>(parser: NestedEventReader<B>, _attributes: &[OwnedAttribute], _session: AtomSession) -> DecodeResult<DateTime<FixedOffset>> {
+    match codecs::RFC3339.decode(&*try!(read_whole_text(parser))) {
         Ok(v) => Ok(v),
         Err(e) => Err(SchemaError(e)),
     }
 }
 
-fn parse_category<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[Attribute], _session: AtomSession) -> DecodeResult<feed::Category> {
+fn parse_category<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[OwnedAttribute], _session: AtomSession) -> DecodeResult<feed::Category> {
     Ok(feed::Category {
         term: f!(attributes, "term"),
         scheme_uri: find_from_attr(attributes, "scheme").map(|v| v.to_string()),
@@ -427,7 +421,7 @@ fn parse_category<B: Buffer>(_parser: NestedEventReader<B>, attributes: &[Attrib
     })
 }
 
-fn parse_generator<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Generator> {
+fn parse_generator<B: Buffer>(parser: NestedEventReader<B>, attributes: &[OwnedAttribute], mut session: AtomSession) -> DecodeResult<feed::Generator> {
     reset_xml_base(attributes, &mut session);
     Ok(feed::Generator {
         uri: find_from_attr(attributes, "uri").map(|v| v.to_string()),  // TODO
@@ -436,7 +430,7 @@ fn parse_generator<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attrib
     })
 }
 
-fn parse_content<B: Buffer>(parser: NestedEventReader<B>, attributes: &[Attribute], mut session: AtomSession) -> DecodeResult<feed::Content> {
+fn parse_content<B: Buffer>(parser: NestedEventReader<B>, attributes: &[OwnedAttribute], mut session: AtomSession) -> DecodeResult<feed::Content> {
     reset_xml_base(attributes, &mut session);
     Ok(feed::Content {
         text: try!(parse_text_construct(parser, attributes, session.clone())),
