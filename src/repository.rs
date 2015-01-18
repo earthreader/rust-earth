@@ -297,14 +297,20 @@ mod test {
         TempDir::new("rust-earth-test").unwrap()
     }
 
-    fn expect_invalid_key<T>(v: RepositoryResult<T>, key: &[&[u8]]) {
-        match v {
-            Err(RepositoryError::InvalidKey(k, _)) => {
-                assert_eq!(k, key);
+    macro_rules! assert_err {
+        ($expr:expr, $err_pat:pat => $blk:block) => (
+            match $expr {
+                Ok(_) => { panic!("unexpected success"); }
+                Err($err_pat) => $blk,
+                Err(e) => { panic!("unexpected error: {:?}", e); }
             }
-            Err(e) => { panic!("Unexpected error: {:?}", e); }
-            Ok(_) => { panic!("Unexpected success"); }
-        }
+        )
+    }
+
+    fn expect_invalid_key<T>(v: RepositoryResult<T>, key: &[&[u8]]) {
+        assert_err!(v, RepositoryError::InvalidKey(k, _) => {
+            assert_eq!(k, key);
+        });
     }
 
     #[test]
@@ -441,13 +447,10 @@ mod test {
     fn test_file_not_found() {
         let tmpdir = temp_dir();
         let path = tmpdir.path().join("not-exist");
-        match FileSystemRepository::from_path(&path, false) {
-            Ok(_) => { panic!("unexpected success"); }
-            Err(RepositoryError::Io(e)) => {
+        assert_err!(FileSystemRepository::from_path(&path, false),
+            RepositoryError::Io(e) => {
                 assert_eq!(e.kind, IoErrorKind::FileNotFound);
-            }
-            Err(e) => { panic!("unexpected error: {:?}", e); }
-        }
+            });
         let _f = FileSystemRepository::from_path(&path, true);
         assert!(path.is_dir());
     }
@@ -457,12 +460,10 @@ mod test {
         let tmpdir = temp_dir();
         let path = tmpdir.path().join("not-dir.txt");
         File::create(&path).write(&[]).unwrap();
-        match FileSystemRepository::from_path(&path, false) {
-            Ok(_) => { panic!("unexpected success"); }
-            Err(RepositoryError::NotADirectory(p)) => {
+        assert_err!(FileSystemRepository::from_path(&path, false),
+            RepositoryError::NotADirectory(p) => {
                 assert_eq!(path, p);
-            }
-            Err(e) => { panic!("unexpected error: {:?}", e); }
+            });
         }
     }
 }
