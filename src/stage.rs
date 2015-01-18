@@ -2,7 +2,7 @@ pub use self::dirtybuffer::DirtyBuffer;
 
 
 mod dirtybuffer {
-    use repository::{Repository, RepositoryResult, invalid_key};
+    use repository::{Names, Repository, RepositoryResult, invalid_key};
 
     use std::collections::{HashMap};
     use std::io::{BufReader, IoResult, MemWriter, Writer};
@@ -62,9 +62,10 @@ mod dirtybuffer {
         }
 
         fn list<T: BytesContainer>(&self, _key: &[T]) ->
-            RepositoryResult<Box<Iterator<Item=Vec<u8>>>>
+            RepositoryResult<Names>
         {
-            Ok(Box::new(vec![].into_iter()) as Box<Iterator<Item=Vec<u8>>>)
+            let names = self.dictionary.keys();
+            Ok(Names::new(names.map(|e| &e[])))
         }
     }
 

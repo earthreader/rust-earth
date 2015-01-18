@@ -95,8 +95,24 @@ pub trait Repository {
     fn exists<T: BytesContainer>(&self, key: &[T]) -> bool;
 
     /// List all subkeys in the `key`.
-    fn list<T: BytesContainer>(&self, key: &[T]) ->
-        RepositoryResult<Box<Iterator<Item=Vec<u8>>>>;
+    fn list<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+        RepositoryResult<Names<'a>>;
+}
+
+pub struct Names<'a>(Box<Iterator<Item=&'a [u8]> + 'a>);
+
+impl<'a> Names<'a> {
+    pub fn new<'b, T>(iter: T) -> Names<'b>
+        where T: Iterator<Item=&'b [u8]> + 'b
+    {
+        Names(Box::new(iter) as Box<Iterator<Item=&'b [u8]>>)
+    }
+}
+
+impl<'a> Iterator for Names<'a> {
+    type Item = &'a [u8];
+    fn next(&mut self) -> Option<&'a [u8]> { self.0.next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
 }
 
 pub trait ToRepository<R: Repository> {
@@ -144,11 +160,6 @@ impl FileSystemRepository {
     }
 }
 
-#[inline]
-fn components(p: Path) -> Option<Vec<u8>> {
-    p.filename().map(|p| p.to_vec())
-}
-
 impl Repository for FileSystemRepository {
     fn read<'a, T: BytesContainer>(&'a self, key: &[T]) ->
         RepositoryResult<Box<Buffer + 'a>>
@@ -181,16 +192,38 @@ impl Repository for FileSystemRepository {
         PathExtensions::exists(&self.path.join_many(key))
     }
 
-    fn list<T: BytesContainer>(&self, key: &[T]) ->
-        RepositoryResult<Box<Iterator<Item=Vec<u8>>>>
+    fn list<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+        RepositoryResult<Names<'a>>
     {
+        use std::vec::IntoIter;
+        use std::mem::copy_lifetime;
         let names = match readdir(&self.path.join_many(key)) {
             Ok(v) => v,
             Err(e) => { return Err(invalid_key(key, Some(e))); }
         };
-        let components: fn(Path) -> Option<Vec<u8>> = components;
-        let iter = names.into_iter().filter_map(components);
-        Ok(Box::new(iter) as Box<Iterator<Item=Vec<u8>>>)
+        struct NameList<'a> {
+            owner: &'a FileSystemRepository,
+            source: IntoIter<Path>,
+        };
+        impl<'a> Iterator for NameList<'a> {
+            type Item = &'a [u8];
+            fn next(&mut self) -> Option<&'a [u8]> {
+                loop {
+                    if let Some(p) = self.source.next() {
+                        if let Some(b) = p.filename() {
+                            let b = unsafe { copy_lifetime(self.owner, b) };
+                            return Some(b);
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        return None;
+                    }
+                }
+            }
+            fn size_hint(&self) -> (usize, Option<usize>) { self.source.size_hint() }
+        }
+        Ok(Names::new(NameList { owner: self, source: names.into_iter() }))
     }
 }
 
@@ -222,7 +255,8 @@ impl ToRepository<FileSystemRepository> for Url {
 
 #[cfg(test)]
 mod test {
-    use super::{Repository, RepositoryError, RepositoryResult, ToRepository};
+    use super::{Names, Repository, RepositoryError, RepositoryResult,
+                ToRepository};
     use super::{FileSystemRepository};
     
     use std::io::{File, IoErrorKind, TempDir, USER_DIR};
@@ -253,9 +287,15 @@ mod test {
         }
 
         fn list<T: BytesContainer>(&self, _key: &[T]) ->
-            RepositoryResult<Box<Iterator<Item=Vec<u8>>>>
+            RepositoryResult<Names>
         {
-            Ok(Box::new(vec![].into_iter()) as Box<Iterator<Item=Vec<u8>>>)
+            struct Empty<'a>;
+            impl<'a> Iterator for Empty<'a> {
+                type Item = &'a [u8];
+                fn next(&mut self) -> Option<&[u8]> { None }
+                fn size_hint(&self) -> (usize, Option<usize>) { (0, Some(0)) }
+            }
+            Ok(Names::new(Empty))
         }
     }
 
