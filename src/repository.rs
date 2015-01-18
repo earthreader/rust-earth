@@ -177,7 +177,17 @@ impl Repository for FileSystemRepository {
     {
         let path = self.path.join_many(key);
         let dir_path = path.dir_path();
-        try!(mkdir_recursive(&dir_path, io::USER_DIR));
+        match mkdir_recursive(&dir_path, io::USER_DIR) {
+            Ok(_) => { }
+            Err(e) => match e.kind {
+                io::IoErrorKind::PathAlreadyExists => {
+                    return Err(invalid_key(key, Some(e)));
+                }
+                _ => {
+                    return Err(FromError::from_error(e));
+                }
+            }
+        }
         let file_res = File::open_mode(&path,
                                        io::FileMode::Open,
                                        io::FileAccess::Write);
@@ -236,7 +246,8 @@ mod test {
     use super::{Names, Repository, RepositoryError, RepositoryResult,
                 ToRepository};
     use super::{FileSystemRepository};
-    
+
+    use std::collections::BTreeSet;
     use std::io::{File, IoErrorKind, TempDir, USER_DIR};
     use std::io::fs::{PathExtensions, mkdir_recursive};
     use std::io::util::{NullReader, NullWriter};
@@ -297,6 +308,16 @@ mod test {
         TempDir::new("rust-earth-test").unwrap()
     }
 
+    macro_rules! unwrap {
+        ($expr:expr) => (
+            match $expr {
+                Ok(t) => t,
+                Err(e) =>
+                    panic!("called `unwrap!()` on an `Err` value: {:?}", e)
+            }
+        )
+    }
+    
     macro_rules! assert_err {
         ($expr:expr, $err_pat:pat => $blk:block) => (
             match $expr {
@@ -464,6 +485,65 @@ mod test {
             RepositoryError::NotADirectory(p) => {
                 assert_eq!(path, p);
             });
+    }
+
+    #[test]
+    fn test_filesystem_repository() {
+        let tmpdir = temp_dir();
+        let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
+        test_repository(f);
+    }
+
+    #[test]
+    fn test_dirty_buffer() {
+        use stage::DirtyBuffer;
+        let tmpdir = temp_dir();
+        let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
+        let dirty_buffer = DirtyBuffer::new(f);
+        test_repository(dirty_buffer);
+    }
+
+    pub fn test_repository<R: Repository>(mut repository: R) {
+        let empty: &[&[u8]] = &[];
+        assert_err!(repository.read(empty),
+                    RepositoryError::InvalidKey(..) => {});
+        assert_err!(repository.write(empty),
+                    RepositoryError::InvalidKey(..) => {});
+        assert_eq!(unwrap!(repository.list(empty)).next(), None);
+        assert!(!repository.exists(&["key"]));
+        assert_err!(repository.read(&["key"]),
+                    RepositoryError::InvalidKey(..) => {});
+        {
+            let mut w = unwrap!(repository.write(&["key"]));
+            unwrap!(w.write(b"cont"));
+            unwrap!(w.write(b"ents"));
         }
+        assert_eq!(unwrap!(repository.list(empty)).collect::<Vec<_>>(),
+                   [b"key"]);
+        assert!(repository.exists(&["key"]));
+        assert_eq!(unwrap!(unwrap!(repository.read(&["key"])).read_to_end()),
+                   b"contents");
+        assert!(!repository.exists(&["dir", "key"]));
+        assert_err!(repository.read(&["dir", "key"]),
+                    RepositoryError::InvalidKey(k, _) => {
+                        assert_eq!(k, [b"dir", b"key"]);
+                    });
+        {
+            let mut w = unwrap!(repository.write(&["dir", "key"]));
+            unwrap!(w.write(b"cont"));
+            unwrap!(w.write(b"ents"));
+        }
+        assert_eq!(unwrap!(repository.list(empty)).collect::<BTreeSet<_>>(),
+                   [b"dir", b"key"].iter().map(|b| b.to_vec())
+                                   .collect::<BTreeSet<_>>());
+        assert!(repository.exists(&["dir", "key"]));
+        assert!(!repository.exists(&["dir", "key2"]));
+        assert_eq!(unwrap!(unwrap!(repository.read(&["dir", "key"]))
+                           .read_to_end()),
+                   b"contents");
+        assert_err!(repository.write(&["key", "key"]),  // directory test
+                    RepositoryError::InvalidKey(..) => { });
+        assert_err!(repository.list(&["key"]),
+                    RepositoryError::InvalidKey(..) => { });
     }
 }
