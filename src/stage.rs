@@ -137,12 +137,12 @@ mod dirtybuffer {
                         &mut NestedItem::Item(ref mut v) => {
                             return Some(v);
                         }
-                        _ => { panic!("something is wrong"); }
+                        _ => unreachable!()
                     }
                 } else {
                     match slot.insert(NestedItem::Map(HashMap::new())) {
                         &mut NestedItem::Map(ref mut m) => m,
-                        _ => { panic!("something's wrong"); }
+                        _ => unreachable!()
                     }
                 }
             }

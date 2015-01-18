@@ -225,7 +225,7 @@ impl ToRepository<FileSystemRepository> for Url {
                 v.scheme = scheme.to_string();
                 v
             },
-            Err(_) => panic!()
+            Err(_) => unimplemented!()
         }
     }
 }
