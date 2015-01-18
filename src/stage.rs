@@ -5,7 +5,7 @@ mod dirtybuffer {
     use repository::{Names, Repository, RepositoryResult, invalid_key};
 
     use std::collections::{HashMap, HashSet};
-    use std::io::{BufReader, IoResult, MemWriter, Writer};
+    use std::io::{BufReader, IoResult, Writer};
     use std::path::BytesContainer;
 
     enum NestedItem<K, V> {
@@ -28,6 +28,30 @@ mod dirtybuffer {
                 dictionary: HashMap::new(),
             }
         }
+
+        pub fn flush(&mut self) -> RepositoryResult<()> {
+            _flush(&mut self.inner, &mut self.dictionary, vec![])
+        }
+    }
+
+    fn _flush<R: Repository>(repo: &mut R,
+                             _dictionary: &mut Dictionary,
+                             _key: Vec<Vec<u8>>) -> RepositoryResult<()> {
+        for (k, value) in _dictionary.iter_mut() {
+            let mut key = _key.clone();
+            key.push(k.clone());
+            match *value {
+                NestedItem::Map(ref mut m) => { return _flush(repo, m, key); }
+                NestedItem::Item(Some(ref v)) => {
+                    // TODO: merge with inner repo
+                    let mut w = try!(repo.write(&key[]));
+                    try!(w.write(&v[]));
+                }
+                _ => { /* unsure */ }
+            }
+        }
+        _dictionary.clear();
+        Ok(())
     }
 
     impl<R: Repository> Repository for DirtyBuffer<R> {
@@ -35,9 +59,9 @@ mod dirtybuffer {
             RepositoryResult<Box<Buffer + 'a>>
         {
             let b = match find_item(&self.dictionary, key) {
-                Ok(Some(v)) => v,
-                Ok(None) => { return self.inner.read(key); }
-                Err(_) => { return Err(invalid_key(key, None)); }
+                FindResult::Found(&NestedItem::Item(Some(ref v))) => v,
+                FindResult::NotFound => { return self.inner.read(key); }
+                _ => { return Err(invalid_key(key, None)); }
             };
             let reader = BufReader::new(&b[]);
             Ok(Box::new(reader) as Box<Buffer>)
@@ -52,13 +76,17 @@ mod dirtybuffer {
             };
             let writer = DirtyWriter {
                 slot: slot,
-                writer: MemWriter::new(),
+                writer: Some(Vec::new()),
             };
             Ok(Box::new(writer) as Box<Writer>)
         }
 
-        fn exists<T: BytesContainer>(&self, _key: &[T]) -> bool {
-            true
+        fn exists<T: BytesContainer>(&self, key: &[T]) -> bool {
+            match find_item(&self.dictionary, key) {
+                FindResult::Found(_) => true,
+                FindResult::NotFound => self.inner.exists(key),
+                FindResult::InvalidKey => false,
+            }
         }
 
         fn list<T: BytesContainer>(&self, key: &[T]) ->
@@ -89,35 +117,44 @@ mod dirtybuffer {
 
     pub struct DirtyWriter<'a> {
         slot: &'a mut Option<Vec<u8>>,
-        writer: MemWriter,
+        writer: Option<Vec<u8>>,
     }
 
     impl<'a> Writer for DirtyWriter<'a> {
         fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-            self.writer.write(buf)
+            self.writer.as_mut().unwrap().write(buf)
         }
-        fn flush(&mut self) -> IoResult<()> { self.writer.flush() }
+        fn flush(&mut self) -> IoResult<()> {
+            self.writer.as_mut().unwrap().flush()
+        }
     }
 
     #[unsafe_destructor]
     impl<'a> Drop for DirtyWriter<'a> {
-        fn drop(&mut self) { }
+        fn drop(&mut self) {
+            *self.slot = self.writer.take();
+        }
+    }
+
+    enum FindResult<T> {
+        Found(T),
+        NotFound,
+        InvalidKey,
     }
 
     fn find_item<'a, T: BytesContainer>(dict: &'a Dictionary, key: &[T]) ->
-        Result<Option<&'a Vec<u8>>, ()>
+        FindResult<&'a NestedItem<PathKey, Option<Vec<u8>>>>
     {
         let head = match key.first() {
             Some(k) => k.container_as_bytes(),
-            None => { return Err(()); }
+            None => { return FindResult::InvalidKey; }
         };
         let tail = key.tail();
         match dict.get(head) {
-            Some(&NestedItem::Item(Some(ref v))) if tail.is_empty() =>
-                Ok(Some(v)),
+            Some(v) if tail.is_empty() => FindResult::Found(v),
             Some(&NestedItem::Map(ref m)) => find_item(m, key.tail()),
-            None => Ok(None),
-            _ => Err(()),
+            None => FindResult::NotFound,
+            _ => FindResult::InvalidKey,
         }
     }
 
