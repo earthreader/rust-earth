@@ -4,7 +4,7 @@ pub use self::dirtybuffer::DirtyBuffer;
 mod dirtybuffer {
     use repository::{Names, Repository, RepositoryResult, invalid_key};
 
-    use std::collections::{HashMap};
+    use std::collections::{HashMap, HashSet};
     use std::io::{BufReader, IoResult, MemWriter, Writer};
     use std::path::BytesContainer;
 
@@ -61,11 +61,29 @@ mod dirtybuffer {
             true
         }
 
-        fn list<T: BytesContainer>(&self, _key: &[T]) ->
+        fn list<T: BytesContainer>(&self, key: &[T]) ->
             RepositoryResult<Names>
         {
-            let names = self.dictionary.keys();
-            Ok(Names::new(names.map(|e| &e[])))
+            let d = if key.is_empty() {
+                &self.dictionary
+            } else {
+                match find_item(&self.dictionary, key) {
+                    FindResult::Found(&NestedItem::Map(ref v)) => v,
+                    FindResult::NotFound => { return self.inner.list(key); }
+                    _ => { return Err(invalid_key(key, None)); }
+                }
+            };
+            let names = d.iter().filter_map(|(k, v)| match *v {
+                NestedItem::Item(None) => None,
+                _ => Some(k.clone()),
+            });
+            let src = match self.inner.list(key) {
+                Ok(src) => src,
+                Err(_) => { return Ok(Names::new(names)); }
+            };
+            let mut names: HashSet<_> = names.collect();
+            names.extend(src);
+            Ok(Names::new(names.into_iter()))
         }
     }
 

@@ -99,19 +99,19 @@ pub trait Repository {
         RepositoryResult<Names<'a>>;
 }
 
-pub struct Names<'a>(Box<Iterator<Item=&'a [u8]> + 'a>);
+pub struct Names<'a>(Box<Iterator<Item=Vec<u8>> + 'a>);
 
 impl<'a> Names<'a> {
     pub fn new<'b, T>(iter: T) -> Names<'b>
-        where T: Iterator<Item=&'b [u8]> + 'b
+        where T: Iterator<Item=Vec<u8>> + 'b
     {
-        Names(Box::new(iter) as Box<Iterator<Item=&'b [u8]>>)
+        Names(Box::new(iter) as Box<Iterator<Item=Vec<u8>>>)
     }
 }
 
 impl<'a> Iterator for Names<'a> {
-    type Item = &'a [u8];
-    fn next(&mut self) -> Option<&'a [u8]> { self.0.next() }
+    type Item = Vec<u8>;
+    fn next(&mut self) -> Option<Vec<u8>> { self.0.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
 }
 
@@ -195,35 +195,13 @@ impl Repository for FileSystemRepository {
     fn list<'a, T: BytesContainer>(&'a self, key: &[T]) ->
         RepositoryResult<Names<'a>>
     {
-        use std::vec::IntoIter;
-        use std::mem::copy_lifetime;
         let names = match readdir(&self.path.join_many(key)) {
             Ok(v) => v,
             Err(e) => { return Err(invalid_key(key, Some(e))); }
         };
-        struct NameList<'a> {
-            owner: &'a FileSystemRepository,
-            source: IntoIter<Path>,
-        };
-        impl<'a> Iterator for NameList<'a> {
-            type Item = &'a [u8];
-            fn next(&mut self) -> Option<&'a [u8]> {
-                loop {
-                    if let Some(p) = self.source.next() {
-                        if let Some(b) = p.filename() {
-                            let b = unsafe { copy_lifetime(self.owner, b) };
-                            return Some(b);
-                        } else {
-                            continue;
-                        }
-                    } else {
-                        return None;
-                    }
-                }
-            }
-            fn size_hint(&self) -> (usize, Option<usize>) { self.source.size_hint() }
-        }
-        Ok(Names::new(NameList { owner: self, source: names.into_iter() }))
+        let iter = names.into_iter().filter_map(|path| path.filename()
+                                                           .map(|p| p.to_vec()));
+        Ok(Names::new(iter))
     }
 }
 
@@ -291,8 +269,8 @@ mod test {
         {
             struct Empty<'a>;
             impl<'a> Iterator for Empty<'a> {
-                type Item = &'a [u8];
-                fn next(&mut self) -> Option<&[u8]> { None }
+                type Item = Vec<u8>;
+                fn next(&mut self) -> Option<Vec<u8>> { None }
                 fn size_hint(&self) -> (usize, Option<usize>) { (0, Some(0)) }
             }
             Ok(Names::new(Empty))
@@ -432,7 +410,6 @@ mod test {
         assert!(!f.exists(&["dir-not-exist"]));
     }
 
-    /*
     #[test]
     fn test_file_list() {
         let tmpdir = temp_dir();
@@ -451,7 +428,7 @@ mod test {
         paths.sort();
         expected.sort();
         assert_eq!(paths, expected);
-    }*/
+    }
 
     #[test]
     fn test_file_list_on_wrong_key() {
