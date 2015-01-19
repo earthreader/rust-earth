@@ -13,6 +13,7 @@ extern crate url;
 extern crate xml;
 
 pub mod macros;
+pub mod test_utils;
 
 pub mod codecs;
 pub mod feed;

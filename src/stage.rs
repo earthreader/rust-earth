@@ -194,8 +194,9 @@ mod dirtybuffer {
     mod test {
         use super::DirtyBuffer;
 
+        use test_utils::temp_dir;
         use repository::FileSystemRepository;
-        use repository::test::{temp_dir, test_repository};
+        use repository::test::test_repository;
         
         #[test]
         fn test_dirty_buffer() {
