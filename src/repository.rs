@@ -91,12 +91,50 @@ pub trait Repository {
     fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
         RepositoryResult<Box<Writer + 'a>>;
 
+    fn read<T: BytesContainer>(&self, key: &[T]) -> RepositoryResult<Vec<u8>> {
+        Ok(try!(try!(self.get_reader(key)).read_to_end()))
+    }
+
+    fn write<T: BytesContainer, U: Bytes>(&mut self, key: &[T], buf: &[U]) ->
+        RepositoryResult<()>
+    {
+        let mut w = try!(self.get_writer(key));
+        for b in buf.iter() {
+            try!(w.write(b.as_bytes()));
+        }
+        Ok(())
+    }
+
     /// Return whether the `key` exists or not.
     fn exists<T: BytesContainer>(&self, key: &[T]) -> bool;
 
     /// List all subkeys in the `key`.
     fn list<'a, T: BytesContainer>(&'a self, key: &[T]) ->
         RepositoryResult<Names<'a>>;
+}
+
+pub trait Bytes {
+    fn as_bytes<'a>(&'a self) -> &'a [u8];
+}
+
+impl Bytes for [u8] {
+    fn as_bytes(&self) -> &[u8] { self }
+}
+
+impl Bytes for Vec<u8> {
+    fn as_bytes(&self) -> &[u8] { &self[] }
+}
+
+impl Bytes for str {
+    fn as_bytes(&self) -> &[u8] { StrExt::as_bytes(self) }
+}
+
+impl Bytes for String {
+    fn as_bytes(&self) -> &[u8] { StrExt::as_bytes(&self[]) }
+}
+
+impl<'a, T: ?Sized + Bytes> Bytes for &'a T {
+    fn as_bytes(&self) -> &[u8] { (*self).as_bytes() }
 }
 
 pub struct Names<'a>(Box<Iterator<Item=Vec<u8>> + 'a>);
@@ -548,33 +586,21 @@ mod test {
         expect_invalid_key!(repository.get_writer, &[]);
         assert_eq!(unwrap!(repository.list(empty)).next(), None);
         assert!(!repository.exists(&["key"]));
-        expect_invalid_key!(repository.get_reader, &[b"key"]);
-        {
-            let mut w = unwrap!(repository.get_writer(&["key"]));
-            unwrap!(w.write(b"cont"));
-            unwrap!(w.write(b"ents"));
-        }
+        expect_invalid_key!(repository.read, &[b"key"]);
+        unwrap!(repository.write(&["key"], &[b"cont", b"ents"]));
         assert_eq!(unwrap!(repository.list(empty)).collect::<Vec<_>>(),
                    [b"key"]);
         assert!(repository.exists(&["key"]));
-        assert_eq!(unwrap!(unwrap!(repository.get_reader(&["key"]))
-                           .read_to_end()),
-                   b"contents");
+        assert_eq!(unwrap!(repository.read(&["key"])), b"contents");
         assert!(!repository.exists(&["dir", "key"]));
-        expect_invalid_key!(repository.get_reader, &[b"dir", b"key"]);
-        {
-            let mut w = unwrap!(repository.get_writer(&["dir", "key"]));
-            unwrap!(w.write(b"cont"));
-            unwrap!(w.write(b"ents"));
-        }
+        expect_invalid_key!(repository.read, &[b"dir", b"key"]);
+        unwrap!(repository.write(&["dir", "key"], &["cont", "ents"]));
         assert_eq!(unwrap!(repository.list(empty)).collect::<BTreeSet<_>>(),
                    [b"dir", b"key"].iter().map(|b| b.to_vec())
                                    .collect::<BTreeSet<_>>());
         assert!(repository.exists(&["dir", "key"]));
         assert!(!repository.exists(&["dir", "key2"]));
-        assert_eq!(unwrap!(unwrap!(repository.get_reader(&["dir", "key"]))
-                           .read_to_end()),
-                   b"contents");
+        assert_eq!(unwrap!(repository.read(&["dir", "key"])), b"contents");
         // directory test
         expect_invalid_key!(repository.get_writer, &[b"key", b"key"]);
         expect_invalid_key!(repository.list, &[b"key"]);
