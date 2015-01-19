@@ -27,14 +27,16 @@ impl<'a, B: Buffer> NestedEventReader<'a, B> {
     }
 
     #[inline]
-    pub fn next<'b>(&'b mut self) -> Option<events::NestedEvent<'b, B>> {
+    pub fn next(&mut self) -> Option<events::NestedEvent<B>> {
         if self.finished {
             None
         } else {
             use self::NestedEvent as n;
             let ev = match self.reader.next() {
                 x::StartDocument { version, encoding, standalone } =>
-                n::StartDocument { version: version, encoding: encoding, standalone: standalone },
+                n::StartDocument { version: version,
+                                   encoding: encoding,
+                                   standalone: standalone },
 
                 x::EndDocument => {
                     self.finished = true;
@@ -74,7 +76,7 @@ impl<'a, B: Buffer> NestedEventReader<'a, B> {
 }
 
 #[unsafe_destructor]
-impl<'a, B: Buffer + Send> Drop for NestedEventReader<'a, B> {
+impl<'a, B: Buffer + 'a> Drop for NestedEventReader<'a, B> {
     #[inline]
     fn drop(&mut self) {
         // drain all remained events
@@ -127,8 +129,12 @@ pub mod events {
     impl<'a, B> PartialEq for NestedEvent<'a, B> {
         fn eq(&self, other: &NestedEvent<'a, B>) -> bool {
             match (self, other) {
-                (&n::StartDocument { version: ref v1, encoding: ref e1, standalone: ref s1 },
-                 &n::StartDocument { version: ref v2, encoding: ref e2, standalone: ref s2 }) => {
+                (&n::StartDocument { version: ref v1,
+                                     encoding: ref e1,
+                                     standalone: ref s1 },
+                 &n::StartDocument { version: ref v2,
+                                     encoding: ref e2,
+                                     standalone: ref s2 }) => {
                     v1 == v2 && e1 == e2 && s1 == s2
                 }
                 (&n::EndDocument, &n::EndDocument) => { true }
@@ -136,15 +142,19 @@ pub mod events {
                  &n::ProcessingInstruction { name: ref n2, data: ref d2 }) => {
                     n1 == n2 && d1 == d2
                 }
-                (&n::Element { name: ref n1, attributes: ref a1, namespace: ref ns1, .. },
-                 &n::Element { name: ref n2, attributes: ref a2, namespace: ref ns2, .. }) => {
+                (&n::Element { name: ref n1,
+                               attributes: ref a1,
+                               namespace: ref ns1, .. },
+                 &n::Element { name: ref n2,
+                               attributes: ref a2,
+                               namespace: ref ns2, .. }) => {
                     n1 == n2 && a1 == a2 && ns1 == ns2
                 }
-                (&n::CData(ref c1), &n::CData(ref c2)) => { c1 == c2 }
-                (&n::Comment(ref c1), &n::Comment(ref c2)) => { c1 == c2 }
+                (&n::CData(ref c1),      &n::CData(ref c2)     ) => { c1 == c2 }
+                (&n::Comment(ref c1),    &n::Comment(ref c2)   ) => { c1 == c2 }
                 (&n::Characters(ref c1), &n::Characters(ref c2)) => { c1 == c2 }
                 (&n::Whitespace(ref c1), &n::Whitespace(ref c2)) => { c1 == c2 }
-                (&n::Error(ref e1), &n::Error(ref e2)) => { e1 == e2 }
+                (&n::Error(ref e1),      &n::Error(ref e2)     ) => { e1 == e2 }
                 (_, _) => { false }
             }
         }
@@ -153,8 +163,12 @@ pub mod events {
     impl<'a, B> PartialEq<x> for NestedEvent<'a, B> {
         fn eq(&self, other: &x) -> bool {
             match (self, other) {
-                (&n::StartDocument { version: ref v1, encoding: ref e1, standalone: ref s1 },
-                 &x::StartDocument { version: ref v2, encoding: ref e2, standalone: ref s2 }) => {
+                (&n::StartDocument { version: ref v1,
+                                     encoding: ref e1,
+                                     standalone: ref s1 },
+                 &x::StartDocument { version: ref v2,
+                                     encoding: ref e2,
+                                     standalone: ref s2 }) => {
                     v1 == v2 && e1 == e2 && s1 == s2
                 }
                 (&n::EndDocument, &x::EndDocument) => { true }
@@ -162,41 +176,61 @@ pub mod events {
                  &x::ProcessingInstruction { name: ref n2, data: ref d2 }) => {
                     n1 == n2 && d1 == d2
                 }
-                (&n::     Element { name: ref n1, attributes: ref a1, namespace: ref ns1, .. },
-                 &x::StartElement { name: ref n2, attributes: ref a2, namespace: ref ns2 }) => {
+                (&n::     Element { name: ref n1,
+                                    attributes: ref a1,
+                                    namespace: ref ns1, .. },
+                 &x::StartElement { name: ref n2,
+                                    attributes: ref a2,
+                                    namespace: ref ns2 }) => {
                     n1 == n2 && a1 == a2 && ns1 == ns2
                 }
-                (&n::CData(ref c1), &x::CData(ref c2)) => { c1 == c2 }
-                (&n::Comment(ref c1), &x::Comment(ref c2)) => { c1 == c2 }
+                (&n::CData(ref c1),      &x::CData(ref c2)     ) => { c1 == c2 }
+                (&n::Comment(ref c1),    &x::Comment(ref c2)   ) => { c1 == c2 }
                 (&n::Characters(ref c1), &x::Characters(ref c2)) => { c1 == c2 }
                 (&n::Whitespace(ref c1), &x::Whitespace(ref c2)) => { c1 == c2 }
-                (&n::Error(ref e1), &x::Error(ref e2)) => { e1 == e2 }
+                (&n::Error(ref e1),      &x::Error(ref e2)     ) => { e1 == e2 }
                 (_, _) => { false }
             }
         }
+    }
+
+    impl<'a, B> PartialEq<NestedEvent<'a, B>> for x {
+        fn eq(&self, other: &NestedEvent<'a, B>) -> bool { other == self }
     }
 
     impl<'a, B> fmt::Show for NestedEvent<'a, B> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match *self {
                 n::StartDocument { ref version, ref encoding, ref standalone } =>
-                    write!(f, "StartDocument({}, {:?}, {:?})", version, *encoding, *standalone),
+                    write!(f, "StartDocument({}, {:?}, {:?})",
+                           version, *encoding, *standalone),
                 n::EndDocument =>
                     write!(f, "EndDocument"),
-                n::ProcessingInstruction { ref name, ref data } =>
-                    write!(f, "ProcessingInstruction({:?}{:?})", *name, match *data {
-                        Some(ref data) => format!(", {:?}", data),
-                        None       => String::new()
-                    }),
-                n::Element { ref name, ref attributes, namespace: Namespace(ref namespace), .. } =>
-                    write!(f, "Element({:?}, {:?}{:?})", name, namespace, if attributes.is_empty() {
-                        String::new()
-                    } else {
-                        let attributes: Vec<String> = attributes.iter().map(
-                            |a| format!("{:?} -> {:?}", a.name, a.value)
-                                ).collect();
-                        format!(", [{}]", attributes.connect(", "))
-                    }),
+                n::ProcessingInstruction { ref name, ref data } => {
+                    try!(write!(f, "ProcessingInstruction({:?}", *name));
+                    if let Some(ref data) = *data {
+                        try!(write!(f, ", {:?}", data));
+                    }
+                    write!(f, ")")
+                }
+                n::Element { ref name, ref attributes,
+                             namespace: Namespace(ref namespace), .. } => {
+                    try!(write!(f, "Element({:?}, {:?}", name, namespace));
+                    if !attributes.is_empty() {
+                        try!(write!(f, ", ["));
+                        let mut first = true;
+                        for attr in attributes.iter() {
+                            if first {
+                                first = false;
+                            } else {
+                                try!(write!(f, ", "));
+                            }
+                            try!(write!(f, "{:?} -> {:?}",
+                                        attr.name, attr.value));
+                        }
+                    }
+                    write!(f, "])")
+                }
                 n::Comment(ref data) =>
                     write!(f, "Comment({:?})", data),
                 n::CData(ref data) =>
@@ -206,7 +240,8 @@ pub mod events {
                 n::Whitespace(ref data) =>
                     write!(f, "Whitespace({:?})", data),
                 n::Error(ref e) =>
-                    write!(f, "Error(row: {}, col: {}, message: {:?})", e.row()+1, e.col()+1, e.msg())
+                    write!(f, "Error(row: {}, col: {}, message: {:?})",
+                           e.row() + 1, e.col() + 1, e.msg())
             }
         }
     }
