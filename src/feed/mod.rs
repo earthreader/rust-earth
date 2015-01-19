@@ -1,4 +1,5 @@
 use std::default::Default;
+use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
 
@@ -15,6 +16,15 @@ pub struct Feed {
     pub entries: Vec<Entry>,
 }
 
+impl Deref for Feed {
+    type Target = Source;
+    fn deref(&self) -> &Source { &self.source }
+}
+
+impl DerefMut for Feed {
+    fn deref_mut(&mut self) -> &mut Source { &mut self.source }
+}
+
 impl Feed {
     pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Feed {
         Feed {
@@ -28,19 +38,6 @@ impl Feed {
     }
 }
 
-pub trait FeedMethods {
-    fn get_feed<'a>(&'a self) -> &'a Feed;
-    fn mut_feed<'a>(&'a mut self) -> &'a mut Feed;
-
-    fn get_entries<'a>(&'a self) -> &'a [Entry] { &*self.get_feed().entries }
-    fn mut_entries<'a>(&'a mut self) -> &'a mut Vec<Entry> { &mut self.mut_feed().entries }
-}
-
-impl FeedMethods for Feed {
-    fn get_feed<'a>(&'a self) -> &'a Feed { self }
-    fn mut_feed<'a>(&'a mut self) -> &'a mut Feed { self }
-}
-
 pub struct Entry {
     pub metadata: Metadata,
 
@@ -50,6 +47,15 @@ pub struct Entry {
     pub source: Option<Source>,
     pub read: Mark,
     pub starred: Mark,
+}
+
+impl Deref for Entry {
+    type Target = Metadata;
+    fn deref(&self) -> &Metadata { &self.metadata }
+}
+
+impl DerefMut for Entry {
+    fn deref_mut(&mut self) -> &mut Metadata { &mut self.metadata }
 }
 
 impl Entry {
@@ -70,21 +76,6 @@ impl Entry {
     }
 }
 
-pub trait EntryMethods {
-    fn get_entry<'a>(&'a self) -> &'a Entry;
-
-    fn get_published_at<'a>(&'a self) -> Option<&'a DateTime<FixedOffset>> { self.get_entry().published_at.as_ref() }
-    fn get_summary<'a>(&'a self) -> Option<&'a Text> { self.get_entry().summary.as_ref() }
-    fn get_content<'a>(&'a self) -> Option<&'a Content> { self.get_entry().content.as_ref() }
-    fn get_source<'a>(&'a self) -> Option<&'a Source> { self.get_entry().source.as_ref() }
-    fn get_read<'a>(&'a self) -> &'a Mark { &self.get_entry().read }
-    fn get_starred<'a>(&'a self) -> &'a Mark { &self.get_entry().starred }
-}
-
-impl EntryMethods for Entry {
-    fn get_entry<'a>(&'a self) -> &'a Entry { self }
-}
-
 pub struct Source {
     pub metadata: Metadata,
 
@@ -92,6 +83,15 @@ pub struct Source {
     pub generator: Option<Generator>,
     pub logo: Option<String>,
     pub icon: Option<String>,
+}
+
+impl Deref for Source {
+    type Target = Metadata;
+    fn deref(&self) -> &Metadata { &self.metadata }
+}
+
+impl DerefMut for Source {
+    fn deref_mut(&mut self) -> &mut Metadata { &mut self.metadata }
 }
 
 impl Source {
@@ -108,23 +108,6 @@ impl Source {
     pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
         Source::new(id, title, updated_at)
     }
-}
-
-pub trait SourceMethods {
-    fn get_source<'a>(&'a self) -> &'a Source;
-
-    fn get_subtitle<'a>(&'a self) -> Option<&'a Text> { self.get_source().subtitle.as_ref() }
-    fn get_generator<'a>(&'a self) -> Option<&'a Generator> { self.get_source().generator.as_ref() }
-    fn get_logo<'a>(&'a self) -> Option<&'a str> { self.get_source().logo.as_ref().map(|v| &**v) }
-    fn get_icon<'a>(&'a self) -> Option<&'a str> { self.get_source().icon.as_ref().map(|v| &**v) }
-}
-
-impl SourceMethods for Source {
-    fn get_source<'a>(&'a self) -> &'a Source { self }
-}
-
-impl SourceMethods for Feed {
-    fn get_source<'a>(&'a self) -> &'a Source { &self.source }
 }
 
 pub struct Metadata {
@@ -159,33 +142,4 @@ impl Mergeable for Entry {
         self.starred = self.starred.merge_entities(other.starred);
         self
     }
-}
-
-pub trait MetadataMethods {
-    fn get_metadata<'a>(&'a self) -> &'a Metadata;
-
-    fn get_id<'a>(&'a self) -> &'a str { &*self.get_metadata().id }
-    fn get_title<'a>(&'a self) -> &'a Text { &self.get_metadata().title }
-    fn get_links<'a>(&'a self) -> &'a LinkList { &self.get_metadata().links }
-    fn get_updated_at<'a>(&'a self) -> &'a DateTime<FixedOffset> { &self.get_metadata().updated_at }
-    fn get_authors<'a>(&'a self) -> &'a [Person] { &*self.get_metadata().authors }
-    fn get_contributors<'a>(&'a self) -> &'a [Person] { &*self.get_metadata().contributors }
-    fn get_categories<'a>(&'a self) -> &'a [Category] { &*self.get_metadata().categories }
-    fn get_rights<'a>(&'a self) -> Option<&'a Text> { self.get_metadata().rights.as_ref() }
-}
-
-impl MetadataMethods for Metadata {
-    fn get_metadata<'a>(&'a self) -> &'a Metadata { self }
-}
-
-impl MetadataMethods for Source {
-    fn get_metadata<'a>(&'a self) -> &'a Metadata { &self.metadata }
-}
-
-impl MetadataMethods for Entry {
-    fn get_metadata<'a>(&'a self) -> &'a Metadata { &self.metadata }
-}
-
-impl MetadataMethods for Feed {
-    fn get_metadata<'a>(&'a self) -> &'a Metadata { &self.get_source().metadata }
 }
