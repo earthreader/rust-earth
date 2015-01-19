@@ -177,16 +177,21 @@ impl Repository for FileSystemRepository {
     {
         let path = self.path.join_many(key);
         let dir_path = path.dir_path();
-        match mkdir_recursive(&dir_path, io::USER_DIR) {
-            Ok(_) => { }
-            Err(e) => match e.kind {
-                io::IoErrorKind::PathAlreadyExists => {
-                    return Err(invalid_key(key, Some(e)));
-                }
-                _ => {
-                    return Err(FromError::from_error(e));
+        if !dir_path.exists() {
+            match mkdir_recursive(&dir_path, io::USER_DIR) {
+                Ok(_) => { }
+                Err(e) => match e.kind {
+                    io::IoErrorKind::PathAlreadyExists => {
+                        return Err(invalid_key(key, Some(e)));
+                    }
+                    _ => {
+                        return Err(FromError::from_error(e));
+                    }
                 }
             }
+        }
+        if path.is_dir() {  // additional check for windows
+            return Err(invalid_key(key, None));
         }
         let file_res = File::open_mode(&path,
                                        io::FileMode::Open,
@@ -328,14 +333,18 @@ mod test {
         )
     }
 
-    fn expect_invalid_key<T>(v: RepositoryResult<T>, key: &[&[u8]]) {
-        assert_err!(v, RepositoryError::InvalidKey(k, _) => {
-            assert_eq!(k, key);
-        });
+    macro_rules! expect_invalid_key {
+        ($($f:ident).+, $key:expr) => ({
+            let key: &[&[u8]] = $key;
+            assert_err!($($f).+(key), RepositoryError::InvalidKey(k, _) => {
+                assert_eq!(k, key);
+            })
+        })
     }
 
+    #[cfg(not(windows))]
     #[test]
-    fn test_file_from_to_url() {
+    fn test_file_from_to_url_on_posix() {
         let tmpdir = temp_dir();
         let path_str = tmpdir.path().as_str().unwrap();
         let raw_url = format!("file://{}", path_str);
@@ -348,12 +357,45 @@ mod test {
         assert_eq!(u2.serialize(), format!("fs://{}", path_str));
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn test_file_from_to_url_on_windows() {
+        use std::path::windows::prefix;
+        use std::path::windows::PathPrefix;
+        let tmpdir = temp_dir();
+        let path_str = tmpdir.path()
+            .str_components()
+            .map(|e| e.unwrap())
+
+            .collect::<Vec<_>>()
+            .connect("/");
+        let path_prefix_len = match prefix(tmpdir.path()) {
+            None => 0,
+            Some(PathPrefix::VerbatimPrefix(x)) => 4 + x,
+            Some(PathPrefix::VerbatimUNCPrefix(x,y)) => 8 + x + 1 + y,
+            Some(PathPrefix::VerbatimDiskPrefix) => 6,
+            Some(PathPrefix::UNCPrefix(x,y)) => 2 + x + 1 + y,
+            Some(PathPrefix::DeviceNSPrefix(x)) => 4 + x,
+            Some(PathPrefix::DiskPrefix) => 2
+        };
+        let path_prefix = &tmpdir.path().as_str().unwrap()[0..path_prefix_len];
+        println!("{}", path_str);
+        let raw_url = format!("file:///{}/{}", path_prefix, path_str);
+        let url = Url::parse(&*raw_url).unwrap();
+        let fs: FileSystemRepository = url.to_repo().unwrap();
+        assert_eq!(&fs.path, tmpdir.path());
+        let u1: Url = ToRepository::from_repo(&fs, "file");
+        let u2: Url = ToRepository::from_repo(&fs, "fs");
+        assert_eq!(u1, url);
+        assert_eq!(u2.serialize(), format!("fs:///{}/{}", path_prefix, path_str));
+    }
+
     #[test]
     fn test_file_read() {
         let tmpdir = temp_dir();
         let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
 
-        expect_invalid_key(f.read(&["key"]), &[b"key"]);
+        expect_invalid_key!(f.read, &[b"key"]);
         {
             let mut file = File::create(&tmpdir.path().join("key")).unwrap();
             write!(&mut file, "file content").unwrap();
@@ -367,8 +409,7 @@ mod test {
         let tmpdir = temp_dir();
         let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
 
-        expect_invalid_key(f.read(&["dir", "dir2", "key"]),
-                           &[b"dir", b"dir2", b"key"]);
+        expect_invalid_key!(f.read, &[b"dir", b"dir2", b"key"]);
         {
             let mut path = tmpdir.path().clone();
             path.push("dir");
@@ -414,8 +455,7 @@ mod test {
     fn test_file_write_on_wrong_key() {
         let tmpdir = temp_dir();
         let mut f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
-        let empty: &[&[u8]] = &[];
-        expect_invalid_key(f.write(empty), empty);
+        expect_invalid_key!(f.write, &[]);
     }
 
     #[test]
@@ -461,7 +501,7 @@ mod test {
     fn test_file_list_on_wrong_key() {
         let tmpdir = temp_dir();
         let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
-        expect_invalid_key(f.list(&["not-exist"]), &[b"not-exist"]);
+        expect_invalid_key!(f.list, &[b"not-exist"]);
     }
 
     #[test]
