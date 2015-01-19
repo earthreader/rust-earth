@@ -44,7 +44,7 @@ mod dirtybuffer {
                 NestedItem::Map(ref mut m) => { return _flush(repo, m, key); }
                 NestedItem::Item(Some(ref v)) => {
                     // TODO: merge with inner repo
-                    let mut w = try!(repo.write(&key[]));
+                    let mut w = try!(repo.get_writer(&key[]));
                     try!(w.write(&v[]));
                 }
                 _ => { /* unsure */ }
@@ -55,19 +55,19 @@ mod dirtybuffer {
     }
 
     impl<R: Repository> Repository for DirtyBuffer<R> {
-        fn read<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+        fn get_reader<'a, T: BytesContainer>(&'a self, key: &[T]) ->
             RepositoryResult<Box<Buffer + 'a>>
         {
             let b = match find_item(&self.dictionary, key) {
                 FindResult::Found(&NestedItem::Item(Some(ref v))) => v,
-                FindResult::NotFound => { return self.inner.read(key); }
+                FindResult::NotFound => { return self.inner.get_reader(key); }
                 _ => { return Err(invalid_key(key, None)); }
             };
             let reader = BufReader::new(&b[]);
             Ok(Box::new(reader) as Box<Buffer>)
         }
 
-        fn write<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
+        fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
             RepositoryResult<Box<Writer + 'a>>
         {
             let mut slot = match dig(&mut self.dictionary, key) {

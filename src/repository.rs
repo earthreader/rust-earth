@@ -84,11 +84,11 @@ fn invalid_url(detail: &'static str) -> RepositoryError {
 /// ```
 pub trait Repository {
     /// Read the content from the `key`.
-    fn read<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+    fn get_reader<'a, T: BytesContainer>(&'a self, key: &[T]) ->
         RepositoryResult<Box<Buffer + 'a>>;
 
     /// Get a writer to write data into the ``key``.
-    fn write<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
+    fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
         RepositoryResult<Box<Writer + 'a>>;
 
     /// Return whether the `key` exists or not.
@@ -161,7 +161,7 @@ impl FileSystemRepository {
 }
 
 impl Repository for FileSystemRepository {
-    fn read<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+    fn get_reader<'a, T: BytesContainer>(&'a self, key: &[T]) ->
         RepositoryResult<Box<Buffer + 'a>>
     {
         let path = self.path.join_many(key);
@@ -172,7 +172,7 @@ impl Repository for FileSystemRepository {
         Ok(Box::new(io::BufferedReader::new(file)) as Box<Buffer>)
     }
 
-    fn write<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
+    fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
         RepositoryResult<Box<Writer + 'a>>
     {
         let path = self.path.join_many(key);
@@ -264,13 +264,13 @@ mod test {
     struct RepositoryImplemented;
     
     impl Repository for RepositoryImplemented {
-        fn read<T: BytesContainer>(&self, _key: &[T]) ->
+        fn get_reader<T: BytesContainer>(&self, _key: &[T]) ->
             RepositoryResult<Box<Buffer>>
         {
             Ok(Box::new(NullReader) as Box<Buffer>)
         }
 
-        fn write<T: BytesContainer>(&mut self, _key: &[T]) ->
+        fn get_writer<T: BytesContainer>(&mut self, _key: &[T]) ->
             RepositoryResult<Box<Writer>>
         {
             Ok(Box::new(NullWriter) as Box<Writer>)
@@ -297,11 +297,11 @@ mod test {
     fn test_dummy_implementation() {
         let mut repository = RepositoryImplemented;
         {
-            let mut reader = repository.read(&["key"]).unwrap();
+            let mut reader = repository.get_reader(&["key"]).unwrap();
             assert_eq!(reader.read_to_end().unwrap(), vec![]);
         }
         {
-            let mut writer = repository.write(&["key"]).unwrap();
+            let mut writer = repository.get_writer(&["key"]).unwrap();
             writer.write_str("Hello").unwrap();
         }
         assert!(repository.exists(&["key"]));
@@ -395,12 +395,12 @@ mod test {
         let tmpdir = temp_dir();
         let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
 
-        expect_invalid_key!(f.read, &[b"key"]);
+        expect_invalid_key!(f.get_reader, &[b"key"]);
         {
             let mut file = File::create(&tmpdir.path().join("key")).unwrap();
             write!(&mut file, "file content").unwrap();
         }
-        let content = f.read(&["key"]).unwrap().read_to_end().unwrap();
+        let content = f.get_reader(&["key"]).unwrap().read_to_end().unwrap();
         assert_eq!(&content[], b"file content");
     }
 
@@ -409,7 +409,7 @@ mod test {
         let tmpdir = temp_dir();
         let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
 
-        expect_invalid_key!(f.read, &[b"dir", b"dir2", b"key"]);
+        expect_invalid_key!(f.get_reader, &[b"dir", b"dir2", b"key"]);
         {
             let mut path = tmpdir.path().clone();
             path.push("dir");
@@ -419,7 +419,8 @@ mod test {
             let mut file = File::create(&path).unwrap();
             write!(&mut file, "file content").unwrap();
         }
-        let content = f.read(&["dir", "dir2", "key"]).unwrap().read_to_end().unwrap();
+        let content = f.get_reader(&["dir", "dir2", "key"]).unwrap()
+                       .read_to_end().unwrap();
         assert_eq!(&content[], b"file content");
     }
 
@@ -428,7 +429,7 @@ mod test {
         let tmpdir = temp_dir();
         let mut f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
         {
-            let mut w = f.write(&["key"]).unwrap();
+            let mut w = f.get_writer(&["key"]).unwrap();
             write!(&mut w, "file ").unwrap();
             write!(&mut w, "content").unwrap();
         }
@@ -441,7 +442,7 @@ mod test {
         let tmpdir = temp_dir();
         let mut f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
         {
-            let mut w = f.write(&["dir", "dir2", "key"]).unwrap();
+            let mut w = f.get_writer(&["dir", "dir2", "key"]).unwrap();
             write!(&mut w, "deep ").unwrap();
             write!(&mut w, "dark ").unwrap();
             write!(&mut w, "content").unwrap();
@@ -455,7 +456,7 @@ mod test {
     fn test_file_write_on_wrong_key() {
         let tmpdir = temp_dir();
         let mut f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
-        expect_invalid_key!(f.write, &[]);
+        expect_invalid_key!(f.get_writer, &[]);
     }
 
     #[test]
@@ -543,25 +544,26 @@ mod test {
 
     pub fn test_repository<R: Repository>(mut repository: R) {
         let empty: &[&[u8]] = &[];
-        expect_invalid_key!(repository.read, &[]);
-        expect_invalid_key!(repository.write, &[]);
+        expect_invalid_key!(repository.get_reader, &[]);
+        expect_invalid_key!(repository.get_writer, &[]);
         assert_eq!(unwrap!(repository.list(empty)).next(), None);
         assert!(!repository.exists(&["key"]));
-        expect_invalid_key!(repository.read, &[b"key"]);
+        expect_invalid_key!(repository.get_reader, &[b"key"]);
         {
-            let mut w = unwrap!(repository.write(&["key"]));
+            let mut w = unwrap!(repository.get_writer(&["key"]));
             unwrap!(w.write(b"cont"));
             unwrap!(w.write(b"ents"));
         }
         assert_eq!(unwrap!(repository.list(empty)).collect::<Vec<_>>(),
                    [b"key"]);
         assert!(repository.exists(&["key"]));
-        assert_eq!(unwrap!(unwrap!(repository.read(&["key"])).read_to_end()),
+        assert_eq!(unwrap!(unwrap!(repository.get_reader(&["key"]))
+                           .read_to_end()),
                    b"contents");
         assert!(!repository.exists(&["dir", "key"]));
-        expect_invalid_key!(repository.read, &[b"dir", b"key"]);
+        expect_invalid_key!(repository.get_reader, &[b"dir", b"key"]);
         {
-            let mut w = unwrap!(repository.write(&["dir", "key"]));
+            let mut w = unwrap!(repository.get_writer(&["dir", "key"]));
             unwrap!(w.write(b"cont"));
             unwrap!(w.write(b"ents"));
         }
@@ -570,10 +572,11 @@ mod test {
                                    .collect::<BTreeSet<_>>());
         assert!(repository.exists(&["dir", "key"]));
         assert!(!repository.exists(&["dir", "key2"]));
-        assert_eq!(unwrap!(unwrap!(repository.read(&["dir", "key"]))
+        assert_eq!(unwrap!(unwrap!(repository.get_reader(&["dir", "key"]))
                            .read_to_end()),
                    b"contents");
-        expect_invalid_key!(repository.write, &[b"key", b"key"]);  // directory test
+        // directory test
+        expect_invalid_key!(repository.get_writer, &[b"key", b"key"]);
         expect_invalid_key!(repository.list, &[b"key"]);
     }
 }
