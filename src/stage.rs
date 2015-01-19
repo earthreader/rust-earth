@@ -2,7 +2,7 @@ pub use self::dirtybuffer::DirtyBuffer;
 
 
 mod dirtybuffer {
-    use repository::{Names, Repository, RepositoryResult, invalid_key};
+    use repository::{Names, Repository, RepositoryError, RepositoryResult};
 
     use std::collections::{HashMap, HashSet};
     use std::io::{BufReader, IoResult, Writer};
@@ -61,7 +61,7 @@ mod dirtybuffer {
             let b = match find_item(&self.dictionary, key) {
                 FindResult::Found(&NestedItem::Item(Some(ref v))) => v,
                 FindResult::NotFound => { return self.inner.get_reader(key); }
-                _ => { return Err(invalid_key(key, None)); }
+                _ => { return Err(RepositoryError::invalid_key(key, None)); }
             };
             let reader = BufReader::new(&b[]);
             Ok(Box::new(reader) as Box<Buffer>)
@@ -72,7 +72,7 @@ mod dirtybuffer {
         {
             let mut slot = match dig(&mut self.dictionary, key) {
                 Some(v) => v,
-                None => { return Err(invalid_key(key, None)); }
+                None => { return Err(RepositoryError::invalid_key(key, None)); }
             };
             let writer = DirtyWriter {
                 slot: slot,
@@ -98,7 +98,9 @@ mod dirtybuffer {
                 match find_item(&self.dictionary, key) {
                     FindResult::Found(&NestedItem::Map(ref v)) => v,
                     FindResult::NotFound => { return self.inner.list(key); }
-                    _ => { return Err(invalid_key(key, None)); }
+                    _ => {
+                        return Err(RepositoryError::invalid_key(key, None));
+                    }
                 }
             };
             let names = d.iter().filter_map(|(k, v)| match *v {

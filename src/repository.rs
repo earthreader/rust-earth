@@ -21,6 +21,23 @@ pub enum RepositoryError {
     Io(IoError),
 }
 
+impl RepositoryError {
+    #[inline]
+    pub fn invalid_key<T: BytesContainer>(key: &[T], cause: Option<IoError>) ->
+        RepositoryError
+    {
+        let copied_key = key.iter()
+            .map(|e| e.container_as_bytes().to_vec())
+            .collect();
+        RepositoryError::InvalidKey(copied_key, cause)
+    }
+
+    #[inline]
+    pub fn invalid_url(detail: &'static str) -> RepositoryError {
+        RepositoryError::InvalidUrl(detail)
+    }
+}
+
 impl Error for RepositoryError {
     fn description(&self) -> &str {
         match *self {
@@ -53,21 +70,6 @@ impl FromError<IoError> for RepositoryError {
     fn from_error(err: IoError) -> RepositoryError {
         RepositoryError::Io(err)
     }
-}
-
-#[inline]
-pub fn invalid_key<T: BytesContainer>(key: &[T], cause: Option<IoError>) ->
-    RepositoryError
-{
-    let copied_key = key.iter()
-        .map(|e| e.container_as_bytes().to_vec())
-        .collect();
-    RepositoryError::InvalidKey(copied_key, cause)
-}
-
-#[inline]
-fn invalid_url(detail: &'static str) -> RepositoryError {
-    RepositoryError::InvalidUrl(detail)
 }
 
 /// Repository interface agnostic to its underlying storage implementation.
@@ -204,7 +206,7 @@ impl Repository for FileSystemRepository {
     {
         let path = self.path.join_many(key);
         if !path.is_file() {
-            return Err(invalid_key(key, None));
+            return Err(RepositoryError::invalid_key(key, None));
         }
         let file = try!(File::open(&path));
         Ok(Box::new(io::BufferedReader::new(file)) as Box<Buffer>)
@@ -220,7 +222,7 @@ impl Repository for FileSystemRepository {
                 Ok(_) => { }
                 Err(e) => match e.kind {
                     io::IoErrorKind::PathAlreadyExists => {
-                        return Err(invalid_key(key, Some(e)));
+                        return Err(RepositoryError::invalid_key(key, Some(e)));
                     }
                     _ => {
                         return Err(FromError::from_error(e));
@@ -229,14 +231,14 @@ impl Repository for FileSystemRepository {
             }
         }
         if path.is_dir() {  // additional check for windows
-            return Err(invalid_key(key, None));
+            return Err(RepositoryError::invalid_key(key, None));
         }
         let file_res = File::open_mode(&path,
                                        io::FileMode::Open,
                                        io::FileAccess::Write);
         let file = match file_res {
             Ok(f) => f,
-            Err(e) => { return Err(invalid_key(key, Some(e))); }
+            Err(e) => { return Err(RepositoryError::invalid_key(key, Some(e))); }
         };
         Ok(Box::new(file) as Box<Writer>)
     }
@@ -250,7 +252,7 @@ impl Repository for FileSystemRepository {
     {
         let names = match readdir(&self.path.join_many(key)) {
             Ok(v) => v,
-            Err(e) => { return Err(invalid_key(key, Some(e))); }
+            Err(e) => { return Err(RepositoryError::invalid_key(key, Some(e))); }
         };
         let iter = names.into_iter().filter_map(|path| path.filename()
                                                            .map(|p| p.to_vec()));
@@ -261,13 +263,18 @@ impl Repository for FileSystemRepository {
 impl ToRepository<FileSystemRepository> for Url {
     fn to_repo(&self) -> RepositoryResult<FileSystemRepository> {
         if self.scheme != "file" {
-            return Err(invalid_url("FileSystemRepository only accepts file:// scheme"));
+            return Err(RepositoryError::invalid_url(
+                "FileSystemRepository only accepts file:// scheme"));
         } else if self.query != None || self.fragment != None {
-            return Err(invalid_url("file:// must not contain any host/port/user/password/parameters/query/fragment"));
+            return Err(RepositoryError::invalid_url(
+                concat!("file:// must not contain any host/port/user/",
+                        "password/parameters/query/fragment")));
         }
         let path = match self.to_file_path() {
             Ok(p) => p,
-            Err(_) => { return Err(invalid_url("invalid file path")); }
+            Err(_) => {
+                return Err(RepositoryError::invalid_url("invalid file path"));
+            }
         };
         FileSystemRepository::from_path(&path, true)
     }
