@@ -486,14 +486,12 @@ mod test {
         for i in 0..100 {
             mkdir_recursive(&d.join(format!("d{}", i)), USER_DIR).unwrap();
         }
-        let mut expected: Vec<_> = (0..100)
+        let expected: BTreeSet<_> = (0..100)
             .map(|i| format!("d{}", i))
             .collect();
-        let mut paths = f.list(&["dir"]).unwrap()
+        let paths = f.list(&["dir"]).unwrap()
             .map(|i| str::from_utf8(&i[]).unwrap().to_string())
-            .collect::<Vec<_>>();
-        paths.sort();
-        expected.sort();
+            .collect::<BTreeSet<_>>();
         assert_eq!(paths, expected);
     }
 
@@ -545,14 +543,11 @@ mod test {
 
     pub fn test_repository<R: Repository>(mut repository: R) {
         let empty: &[&[u8]] = &[];
-        assert_err!(repository.read(empty),
-                    RepositoryError::InvalidKey(..) => {});
-        assert_err!(repository.write(empty),
-                    RepositoryError::InvalidKey(..) => {});
+        expect_invalid_key!(repository.read, &[]);
+        expect_invalid_key!(repository.write, &[]);
         assert_eq!(unwrap!(repository.list(empty)).next(), None);
         assert!(!repository.exists(&["key"]));
-        assert_err!(repository.read(&["key"]),
-                    RepositoryError::InvalidKey(..) => {});
+        expect_invalid_key!(repository.read, &[b"key"]);
         {
             let mut w = unwrap!(repository.write(&["key"]));
             unwrap!(w.write(b"cont"));
@@ -564,10 +559,7 @@ mod test {
         assert_eq!(unwrap!(unwrap!(repository.read(&["key"])).read_to_end()),
                    b"contents");
         assert!(!repository.exists(&["dir", "key"]));
-        assert_err!(repository.read(&["dir", "key"]),
-                    RepositoryError::InvalidKey(k, _) => {
-                        assert_eq!(k, [b"dir", b"key"]);
-                    });
+        expect_invalid_key!(repository.read, &[b"dir", b"key"]);
         {
             let mut w = unwrap!(repository.write(&["dir", "key"]));
             unwrap!(w.write(b"cont"));
@@ -581,9 +573,7 @@ mod test {
         assert_eq!(unwrap!(unwrap!(repository.read(&["dir", "key"]))
                            .read_to_end()),
                    b"contents");
-        assert_err!(repository.write(&["key", "key"]),  // directory test
-                    RepositoryError::InvalidKey(..) => { });
-        assert_err!(repository.list(&["key"]),
-                    RepositoryError::InvalidKey(..) => { });
+        expect_invalid_key!(repository.write, &[b"key", b"key"]);  // directory test
+        expect_invalid_key!(repository.list, &[b"key"]);
     }
 }
