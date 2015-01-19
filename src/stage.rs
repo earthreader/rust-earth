@@ -189,4 +189,20 @@ mod dirtybuffer {
         };
         dig(next, tail)
     }
+
+    #[cfg(test)]
+    mod test {
+        use super::DirtyBuffer;
+
+        use repository::FileSystemRepository;
+        use repository::test::{temp_dir, test_repository};
+        
+        #[test]
+        fn test_dirty_buffer() {
+            let tmpdir = temp_dir();
+            let f = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
+            let dirty_buffer = DirtyBuffer::new(f);
+            test_repository(dirty_buffer);
+        }
+    }
 }
