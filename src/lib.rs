@@ -2,6 +2,7 @@
 #![allow(unstable)]
 
 #[plugin]
+#[no_link]
 extern crate regex_macros;
 
 extern crate regex;
