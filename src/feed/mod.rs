@@ -1,3 +1,4 @@
+use std::borrow::ToOwned;
 use std::default::Default;
 use std::ops::{Deref, DerefMut};
 
@@ -33,8 +34,11 @@ impl Feed {
         }
     }
 
-    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Feed {
-        Feed::new(id, title, updated_at)
+    pub fn new<T, S: ?Sized>(id: T, title: Text,
+                             updated_at: DateTime<FixedOffset>) -> Feed
+        where T: Deref<Target=S>, S: ToOwned<String>
+    {
+        Feed::new_inherited(id.to_owned(), title, updated_at)
     }
 }
 

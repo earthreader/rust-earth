@@ -1,14 +1,38 @@
+use std::borrow::ToOwned;
+use std::ops::Deref;
 use std::fmt;
 
 use chrono::{DateTime, FixedOffset};
 
 use schema::{Mergeable};
 
+#[derive(Copy, PartialEq, Eq, Show)]
 pub enum TextType { Text, Html }
 
+#[derive(PartialEq, Show)]
 pub struct Text {
     pub type_: TextType,
     pub value: String,
+}
+
+impl Text {
+    pub fn new<T, S: ?Sized>(type_: TextType, value: T) -> Text
+        where T: Deref<Target=S>, S: ToOwned<String>
+    {
+        Text { type_: type_, value: value.to_owned() }
+    }
+
+    pub fn text<T, S: ?Sized>(value: T) -> Text
+        where T: Deref<Target=S>, S: ToOwned<String>
+    {
+        Text::new(TextType::Text, value.to_owned())
+    }
+
+    pub fn html<T, S: ?Sized>(value: T) -> Text
+        where T: Deref<Target=S>, S: ToOwned<String>
+    {
+        Text::new(TextType::Html, value.to_owned())
+    }
 }
 
 pub struct Person {
@@ -27,6 +51,11 @@ pub struct Link {
 }
 
 pub struct LinkList(pub Vec<Link>);
+
+impl Deref for LinkList {
+    type Target = Vec<Link>;
+    fn deref(&self) -> &Vec<Link> { &self.0 }
+}
 
 pub struct Category {
     pub term: String,
@@ -65,5 +94,49 @@ impl Mergeable for Mark {
             Less => other,
             _    => self,
         }
+    }
+}
+
+impl fmt::String for Person {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(fmt, "{}", self.name));
+        if let Some(ref uri) = self.uri {
+            try!(write!(fmt, " <{}>", uri));
+        } else if let Some(ref email) = self.email {
+            try!(write!(fmt, " <{}>", email));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{Person};
+
+    macro_rules! w {
+        ($expr:expr) => { format!("{}", $expr) }
+    }
+
+    #[test]
+    fn test_person_str() {
+        assert_eq!(w!(Person { name: "Hong Minhee".to_string(),
+                               uri: None, email: None }),
+                   "Hong Minhee");
+        assert_eq!(w!(Person { name: "Hong Minhee".to_string(),
+                               uri: Some("http://dahlia.kr/".to_string()),
+                               email: None }),
+                   "Hong Minhee <http://dahlia.kr/>");
+        let email = concat!("\x6d\x69\x6e\x68\x65\x65\x40\x64",
+                            "\x61\x68\x6c\x69\x61\x2e\x6b\x72");
+        assert_eq!(w!(Person { name: "Hong Minhee".to_string(),
+                               uri: None,
+                               email: Some(email.to_string()) }),
+                   format!("Hong Minhee <{}>", email));
+        assert_eq!("홍민희 <http://dahlia.kr/>", w!(
+            Person {
+                name: "홍민희".to_string(),
+                uri: Some("http://dahlia.kr/".to_string()),
+                email: Some(email.to_string()),
+            }));
     }
 }
