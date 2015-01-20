@@ -66,246 +66,101 @@ fn name_matches<'a>(name: &'a OwnedName, namespace: Option<&'a str>, local_name:
     name.namespace_as_ref().map(|n| &*n) == namespace && name.local_name == local_name
 }
 
-macro_rules! unexpected {
-    ($name:expr) => ( panic!("Unexpected field: {}", $name) )
-}
-
-macro_rules! define_variables {
-    ($($var:ident: $plurality:ident),+) => {
-        let gen_names!($($var),+) = gen_defaults!($($var: $plurality),*);
-    }
-}
-
-macro_rules! gen_names {
-    ($($var:ident),+) => ( ($( mut $var ),+) )
-}
-
-macro_rules! gen_defaults {
-    ($($var:ident: $plurality:ident),+) => ( ($( gen_default!($var, $plurality) ),+) )
-}
-
-macro_rules! gen_default {
-    ($var:ident, multiple)         => ( Vec::new() );
-    ($var:ident, $plurality:ident) => ( Default::default() )
-}
-
 macro_rules! parse_fields {
-    { ($parser:expr, $session:expr) $($attr:expr => $var:ident: $plurality:ident by $func:expr;)* } => {
+    { ($target:ident, $parser:expr, $session:expr)
+       $($attr:pat => $var:ident : $plurality:ident by $func:expr;)* } => {
         for_each!(event in $parser.next() {
-            match event {
-                Element { name, attributes, children, .. } => match name {
+            if let Element { name, attributes, children, .. } = event {
+                match &name.local_name[] {
                     $(
-                        OwnedName { ref local_name, .. }
-                        if $attr == &**local_name => {
-                            let result = try!($func(children, &*attributes, $session.clone()));
-                            assign_field!($var: $plurality, result);
+                        $attr => {
+                            let result = try!($func(children, &*attributes,
+                                                    $session.clone()));
+                            assign_field!($plurality : $target.$var, result);
                         }
-                        )*
-                        _name => { }
-                },
-                _otherwise => { }
+                    )*
+                    _name => { }
+                }
             }
         })
     }
 }
 
 macro_rules! assign_field {
-    ($var:ident: multiple, $value:expr) => ( $var.push($value) );
-    ($var:ident: $p:ident, $value:expr) => ( $var = Some($value) )
+    (required     : $var:expr, $value:expr) => ( $var = $value );
+    (multiple     : $var:expr, $value:expr) => ( $var.push($value) );
+    (multiple_opt : $var:expr, $value:expr) => ( $value.map(|v| $var.push(v)) );
+    ($_p:ident    : $var:expr, $value:expr) => ( $var = Some($value) )
 }
 
-fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str, need_entries: bool, session: AtomSession) -> DecodeResult<feed::Feed> {
-    define_variables!(
-        id: required,
-        title: required,
-        links: multiple,
-        updated_at: required,
-        authors: multiple,
-        contributors: multiple,
-        categories: multiple,
-        rights: optional,
-        subtitle: optional,
-        generator: optional,
-        logo: optional,
-        icon: optional,
-        entries: multiple
-    );
+fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str,
+                         need_entries: bool, session: AtomSession)
+                         -> DecodeResult<feed::Feed> {
+    let mut feed: feed::Feed = Default::default();
+    parse_fields! {
+        (feed, parser, session)
+        "id"          => id:           required     by parse_icon;
+        "title"       => title:        required     by parse_text_construct;
+        "link"        => links:        multiple     by parse_link;
+        "updated"     => updated_at:   required     by parse_datetime;
+        "author"      => authors:      multiple_opt by parse_person_construct;
+        "contributor" => contributors: multiple_opt by parse_person_construct;
+        "category"    => categories:   multiple     by parse_category;
+        "rights"      => rights:       optional     by parse_text_construct;
+        "subtitle"    => subtitle:     optional     by parse_text_construct;
+        "generator"   => generator:    optional     by parse_generator;
+        "logo"        => logo:         optional     by parse_icon;
+        "icon"        => icon:         optional     by parse_icon;
+        "entry" => entries: multiple by parse_entry;
+    }
 
-    for_each!(event in parser.next() {
-        match event {
-            Element { name, attributes, children, .. } => match name {
-                OwnedName { ref local_name, .. }
-                if ["id", "icon", "logo"].contains(&&**local_name) => {
-                    let result = try!(parse_icon(children, &*attributes, session.clone()));
-                    match &**local_name {
-                        "id" => id = Some(result),
-                        "icon" => icon = Some(result),
-                        "logo" => logo = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                OwnedName { ref local_name, .. }
-                if ["title", "rights", "subtitle"].contains(&&**local_name) => {
-                    let result = try!(parse_text_construct(children, &*attributes, session.clone()));
-                    match &**local_name {
-                        "title" => title = Some(result),
-                        "rights" => rights = Some(result),
-                        "subtitle" => subtitle = Some(result),
-                        x => unexpected!(x),
-                    }
-                }
-                OwnedName { ref local_name, .. }
-                if ["author", "contributor"].contains(&&**local_name) => {
-                    match try!(parse_person_construct(children, &*attributes, session.clone())) {
-                        Some(result) => match &**local_name {
-                            "author" => authors.push(result),
-                            "contributor" => contributors.push(result),
-                            x => unexpected!(x),
-                        },
-                        None => { }
-                    }
-                }
-                OwnedName { ref local_name, .. }
-                if *local_name == "link" => {
-                    let result = try!(parse_link(children, &*attributes, session.clone()));
-                    links.push(result);
-                }
-                OwnedName { ref local_name, .. }
-                if ["updated", "modified"].contains(&&**local_name) => {
-                    let result = try!(parse_datetime(children, &*attributes, session.clone()));
-                    updated_at = Some(result);
-                }
-                OwnedName { ref local_name, .. }
-                if *local_name == "category" => {
-                    let result = try!(parse_category(children, &*attributes, session.clone()));
-                    categories.push(result);
-                }
-                OwnedName { ref local_name, .. }
-                if *local_name == "generator" => {
-                    let result = try!(parse_generator(children, &*attributes, session.clone()));
-                    generator = Some(result);
-                }
-                ref name if need_entries && name_matches(name, Some(&*session.element_ns), "entry") => {
-                    let result = try!(parse_entry(children, &*attributes, session.clone()));
-                    entries.push(result);
-                }
+    if feed.id.is_empty() {
+        feed.id = feed_url.to_string();
+    }
 
-                _name => { }
-            },
-
-            _otherwise => { }
-        }
-    });
-
-    let mut feed = feed::Feed::new(
-        id.unwrap_or_else(|| feed_url.to_string()),
-        title.unwrap(),
-        updated_at.unwrap());
-    feed.source.metadata.links = feed::LinkList(links);
-    feed.source.metadata.authors = authors;
-    feed.source.metadata.contributors = contributors;
-    feed.source.metadata.categories = categories;
-    feed.source.metadata.rights = rights;
-    feed.source.subtitle = subtitle;
-    feed.source.generator = generator;
-    feed.source.logo = logo;
-    feed.source.icon = icon;
-    feed.entries = entries;
     Ok(feed)
 }
 
-fn parse_entry<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[OwnedAttribute], session: AtomSession) -> DecodeResult<feed::Entry> {
-    define_variables!(
-        id: required,
-        title: required,
-        links: multiple,
-        updated_at: required,
-        authors: multiple,
-        contributors: multiple,
-        categories: multiple,
-        rights: optional,
-        published_at: optional,
-        summary: optional,
-        content: optional,
-        source: optional
-    );
-
-    parse_fields! { (parser, session)
-        "id"          => id: required by parse_icon;
-        "title"       => title: required by parse_text_construct;
-        "link"        => links: multiple by parse_link;
-        "updated"     => updated_at: required by parse_datetime;
-        "modified"    => updated_at: required by parse_datetime;
-        "author"      => authors: multiple by parse_person_construct;
-        "contributor" => contributors: multiple by parse_person_construct;
-        "category"    => categories: multiple by parse_category;
-        "rights"      => rights: optional by parse_text_construct;
-        "published"   => published_at: optional by parse_datetime;
-        "summary"     => summary: optional by parse_text_construct;
-        "content"     => content: optional by parse_content;
-        "source"      => source: optional by parse_source;
+fn parse_entry<B: Buffer>(mut parser: NestedEventReader<B>,
+                          _attributes: &[OwnedAttribute],
+                          session: AtomSession) -> DecodeResult<feed::Entry> {
+    let mut entry: feed::Entry = Default::default();
+    parse_fields! { (entry, parser, session)
+        "id"          => id:           required     by parse_icon;
+        "title"       => title:        required     by parse_text_construct;
+        "link"        => links:        multiple     by parse_link;
+        "updated"     => updated_at:   required     by parse_datetime;
+        "modified"    => updated_at:   required     by parse_datetime;
+        "author"      => authors:      multiple_opt by parse_person_construct;
+        "contributor" => contributors: multiple_opt by parse_person_construct;
+        "category"    => categories:   multiple     by parse_category;
+        "rights"      => rights:       optional     by parse_text_construct;
+        "published"   => published_at: optional     by parse_datetime;
+        "summary"     => summary:      optional     by parse_text_construct;
+        "content"     => content:      optional     by parse_content;
+        "source"      => source:       optional     by parse_source;
     }
-
-    let mut entry = feed::Entry::new(
-        id.unwrap(),
-        title.unwrap(),
-        updated_at.unwrap());
-    entry.metadata.links = feed::LinkList(links);
-    entry.metadata.authors.extend(authors.into_iter().filter_map(|v| v));
-    entry.metadata.contributors.extend(contributors.into_iter().filter_map(|v| v));
-    entry.metadata.categories.extend(categories.into_iter());
-    entry.metadata.rights = rights;
-    entry.published_at = published_at;
-    entry.summary = summary;
-    entry.content = content;
-    entry.source = source;
     Ok(entry)
 }
 
-fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>, _attributes: &[OwnedAttribute], session: AtomSession) -> DecodeResult<feed::Source> {
-    define_variables!(
-        id: required,
-        title: required,
-        links: multiple,
-        updated_at: required,
-        authors: multiple,
-        contributors: multiple,
-        categories: multiple,
-        rights: optional,
-        subtitle: optional,
-        generator: optional,
-        logo: optional,
-        icon: optional
-    );
-
-    parse_fields! { (parser, session)
-        "id" => id: required by parse_icon;
-        "title" => title: required by parse_text_construct;
-        "link" => links: multiple by parse_link;
-        "updated" => updated_at: required by parse_datetime;
-        "author" => authors: multiple by parse_person_construct;
-        "contributor" => contributors: multiple by parse_person_construct;
-        "category" => categories: multiple by parse_category;
-        "rights" => rights: optional by parse_text_construct;
-        "subtitle" => subtitle: optional by parse_text_construct;
-        "generator" => generator: optional by parse_generator;
-        "logo" => logo: optional by parse_icon;
-        "icon" => icon: optional by parse_icon;
+fn parse_source<B: Buffer>(mut parser: NestedEventReader<B>,
+                           _attributes: &[OwnedAttribute],
+                           session: AtomSession) -> DecodeResult<feed::Source> {
+    let mut source: feed::Source = Default::default();
+    parse_fields! { (source, parser, session)
+        "id"          => id:           required     by parse_icon;
+        "title"       => title:        required     by parse_text_construct;
+        "link"        => links:        multiple     by parse_link;
+        "updated"     => updated_at:   required     by parse_datetime;
+        "author"      => authors:      multiple_opt by parse_person_construct;
+        "contributor" => contributors: multiple_opt by parse_person_construct;
+        "category"    => categories:   multiple     by parse_category;
+        "rights"      => rights:       optional     by parse_text_construct;
+        "subtitle"    => subtitle:     optional     by parse_text_construct;
+        "generator"   => generator:    optional     by parse_generator;
+        "logo"        => logo:         optional     by parse_icon;
+        "icon"        => icon:         optional     by parse_icon;
     }
-
-    let mut source = feed::Source::new(
-        id.unwrap(),
-        title.unwrap(),
-        updated_at.unwrap());
-    source.metadata.links = feed::LinkList(links);
-    source.metadata.authors.extend(authors.into_iter().filter_map(|v| v));
-    source.metadata.contributors.extend(contributors.into_iter().filter_map(|v| v));
-    source.metadata.categories.extend(categories.into_iter());
-    source.metadata.rights = rights;
-    source.subtitle = subtitle;
-    source.generator = generator;
-    source.logo = logo;
-    source.icon = icon;
     Ok(source)
 }
 

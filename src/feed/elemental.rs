@@ -1,6 +1,7 @@
 use std::borrow::ToOwned;
-use std::ops::Deref;
 use std::default::Default;
+use std::iter::FromIterator;
+use std::ops::{Deref, DerefMut};
 use std::fmt;
 
 use chrono::{DateTime, FixedOffset};
@@ -61,6 +62,16 @@ pub struct LinkList(pub Vec<Link>);
 impl Deref for LinkList {
     type Target = Vec<Link>;
     fn deref(&self) -> &Vec<Link> { &self.0 }
+}
+
+impl DerefMut for LinkList {
+    fn deref_mut(&mut self) -> &mut Vec<Link> { &mut self.0 }
+}
+
+impl FromIterator<Link> for LinkList {
+    fn from_iter<T: Iterator<Item=Link>>(iterator: T) -> Self {
+        LinkList(FromIterator::from_iter(iterator))
+    }
 }
 
 pub struct Category {
