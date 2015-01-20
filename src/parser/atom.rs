@@ -64,14 +64,19 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool) -> Deco
     }
 }
 
-fn get_xml_base<'a>(attributes: &'a [OwnedAttribute]) -> Option<&'a str> {
+fn get_xml_base(attributes: &[OwnedAttribute]) -> Option<&str> {
     attributes.iter().find(|&attr| {
         attr.name.namespace_as_ref().map_or(false, |ns| ns == XML_XMLNS)
     }).map(|attr| &*attr.value)
 }
 
-fn name_matches<'a>(name: &'a OwnedName, namespace: Option<&'a str>, local_name: &str) -> bool {
-    name.namespace_as_ref().map(|n| &*n) == namespace && name.local_name == local_name
+fn name_matches(name: &OwnedName, namespace: Option<&str>, local_name: &str) -> bool {
+    &name.local_name[] == local_name &&
+        match (name.namespace_as_ref(), namespace) {
+            (Some(a), Some(b)) => a == b,
+            (None, None) => true,
+            _ => false
+        }
 }
 
 macro_rules! parse_fields {
