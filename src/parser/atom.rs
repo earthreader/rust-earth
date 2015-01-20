@@ -84,18 +84,29 @@ macro_rules! parse_fields {
        $($attr:pat => $var:ident : $plurality:ident by $func:expr;)* } => {
         for_each!(event in $parser.next() {
             if let Element { name, attributes, children, .. } = event {
-                match &name.local_name[] {
-                    $(
-                        $attr => {
-                            let result = try!($func(children, &*attributes,
-                                                    $session.clone()));
-                            assign_field!($plurality : $target.$var, result);
-                        }
-                    )*
-                    _name => { }
+                parse_field! {
+                    ($target, &name.local_name[],
+                     children, &attributes[], $session)
+                    $($attr => $var : $plurality by $func ;)*
                 }
             }
         })
+    }
+}
+
+macro_rules! parse_field {
+    { ($target:ident, $name:expr, $parser:expr, $attributes:expr, $session:expr)
+       $($attr:pat => $var:ident : $plurality:ident by $func:expr;)* } => {
+        match $name {
+            $(
+                $attr => {
+                    let result = try!($func($parser, $attributes,
+                                            $session.clone()));
+                    assign_field!($plurality : $target.$var, result);
+                }
+            )*
+            _name => { }
+        }
     }
 }
 
@@ -108,24 +119,37 @@ macro_rules! assign_field {
 
 fn parse_feed<B: Buffer>(mut parser: NestedEventReader<B>, feed_url: &str,
                          need_entries: bool, session: AtomSession)
-                         -> DecodeResult<feed::Feed> {
+                         -> DecodeResult<feed::Feed>
+{
     let mut feed: feed::Feed = Default::default();
-    parse_fields! {
-        (feed, parser, session)
-        "id"          => id:           required     by parse_icon;
-        "title"       => title:        required     by parse_text_construct;
-        "link"        => links:        multiple     by parse_link;
-        "updated"     => updated_at:   required     by parse_datetime;
-        "author"      => authors:      multiple_opt by parse_person_construct;
-        "contributor" => contributors: multiple_opt by parse_person_construct;
-        "category"    => categories:   multiple     by parse_category;
-        "rights"      => rights:       optional     by parse_text_construct;
-        "subtitle"    => subtitle:     optional     by parse_text_construct;
-        "generator"   => generator:    optional     by parse_generator;
-        "logo"        => logo:         optional     by parse_icon;
-        "icon"        => icon:         optional     by parse_icon;
-        "entry" => entries: multiple by parse_entry;
-    }
+    for_each!(event in parser.next() {
+        if let Element { name, attributes, children, .. } = event {
+            if need_entries && name_matches(&name, Some(&session.element_ns[]),
+                                            "entry") {
+                let result = try!(parse_entry(children, &attributes[],
+                                              session.clone()));
+                feed.entries.push(result);
+                continue;
+            }
+            parse_field! {
+                (feed, &name.local_name[], children, &attributes[], session)
+                "id"          => id:         required by parse_icon;
+                "title"       => title:      required by parse_text_construct;
+                "link"        => links:      multiple by parse_link;
+                "updated"     => updated_at: required by parse_datetime;
+                "author"      => authors: multiple_opt
+                                 by parse_person_construct;
+                "contributor" => contributors: multiple_opt
+                                 by parse_person_construct;
+                "category"    => categories: multiple by parse_category;
+                "rights"      => rights:     optional by parse_text_construct;
+                "subtitle"    => subtitle:   optional by parse_text_construct;
+                "generator"   => generator:  optional by parse_generator;
+                "logo"        => logo:       optional by parse_icon;
+                "icon"        => icon:       optional by parse_icon;
+            }
+        }
+    });
 
     if feed.id.is_empty() {
         feed.id = feed_url.to_string();
