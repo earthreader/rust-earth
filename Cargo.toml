@@ -9,7 +9,6 @@ path = "src/lib.rs"
 
 [dependencies]
 chrono = "*"
-hyper = "*"
 regex = "*"
 regex_macros = "*"
 time = "*"
