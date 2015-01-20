@@ -2,7 +2,7 @@ use std::borrow::ToOwned;
 use std::default::Default;
 use std::ops::{Deref, DerefMut};
 
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, UTC};
 
 use schema::{Mergeable};
 
@@ -11,6 +11,7 @@ pub use self::elemental::{TextType, Text, Person, Link, LinkList, Category, Cont
 pub mod elemental;
 
 
+#[derive(Default)]
 pub struct Feed {
     pub source: Source,
 
@@ -42,6 +43,7 @@ impl Feed {
     }
 }
 
+#[derive(Default)]
 pub struct Entry {
     pub metadata: Metadata,
 
@@ -66,12 +68,7 @@ impl Entry {
     pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
         Entry {
             metadata: Metadata::new_inherited(id, title, updated_at),
-            published_at: Default::default(),
-            summary: Default::default(),
-            content: Default::default(),
-            source: Default::default(),
-            read: Default::default(),
-            starred: Default::default(),
+            ..Default::default()
         }
     }
 
@@ -80,6 +77,7 @@ impl Entry {
     }
 }
 
+#[derive(Default)]
 pub struct Source {
     pub metadata: Metadata,
 
@@ -102,10 +100,7 @@ impl Source {
     pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
         Source {
             metadata: Metadata::new_inherited(id, title, updated_at),
-            subtitle: Default::default(),
-            generator: Default::default(),
-            logo: Default::default(),
-            icon: Default::default(),
+            ..Default::default()
         }
     }
 
@@ -130,13 +125,28 @@ impl Metadata {
         Metadata {
             id: id,
             title: title,
-            links: LinkList(Default::default()),
             updated_at: updated_at,
+            ..Default::default()
+        }            
+    }
+}
+
+impl Default for Metadata {
+    fn default() -> Metadata {
+        use chrono::{NaiveDateTime, Offset};
+        let default_datetime = FixedOffset::east(0).from_local_datetime(
+            &NaiveDateTime::from_num_seconds_from_unix_epoch(0, 0)
+        ).earliest().unwrap();
+        Metadata {
+            id: Default::default(),
+            title: Default::default(),
+            links: Default::default(),
+            updated_at: default_datetime,
             authors: Default::default(),
             contributors: Default::default(),
             categories: Default::default(),
             rights: Default::default(),
-        }            
+        }
     }
 }
 

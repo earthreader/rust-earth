@@ -1,5 +1,6 @@
 use std::borrow::ToOwned;
 use std::ops::Deref;
+use std::default::Default;
 use std::fmt;
 
 use chrono::{DateTime, FixedOffset};
@@ -9,7 +10,11 @@ use schema::{Mergeable};
 #[derive(Copy, PartialEq, Eq, Show)]
 pub enum TextType { Text, Html }
 
-#[derive(PartialEq, Show)]
+impl Default for TextType {
+    fn default() -> TextType { TextType::Text }
+}
+
+#[derive(Default, PartialEq, Show)]
 pub struct Text {
     pub type_: TextType,
     pub value: String,
@@ -50,6 +55,7 @@ pub struct Link {
     pub byte_size: Option<u64>,
 }
 
+#[derive(Default)]
 pub struct LinkList(pub Vec<Link>);
 
 impl Deref for LinkList {
