@@ -3,7 +3,7 @@ name = "rust-earth"
 version = "0.0.1"
 authors = ["kroisse@gmail.com"]
 
-[[lib]]
+[lib]
 name = "earth"
 path = "src/lib.rs"
 
