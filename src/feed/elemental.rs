@@ -398,18 +398,21 @@ impl FromIterator<Link> for LinkList {
     }
 }
 
+#[derive(Default)]
 pub struct Category {
     pub term: String,
     pub scheme_uri: Option<String>,
     pub label: Option<String>,
 }
 
+#[derive(Default)]
 pub struct Content {
     pub text: Text,
 
     pub source_uri: Option<String>,
 }
 
+#[derive(Default)]
 pub struct Generator {
     pub uri: Option<String>,
     pub version: Option<String>,

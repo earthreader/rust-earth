@@ -1,10 +1,20 @@
+#![unstable]
+
+use std::borrow::ToOwned;
+use std::error::{Error, FromError};
+use std::fmt;
+
 use xml;
 use xml::reader::events::XmlEvent as x;
 
 use schema;
 
+pub use xml::attribute::OwnedAttribute as XmlAttribute;
+pub use xml::name::OwnedName as XmlName;
+pub use xml::namespace::Namespace as XmlNamespace;
 pub use self::events::NestedEvent;
 
+#[derive(Show)]
 pub enum DecodeError {
     XmlError(xml::common::Error),
     UnexpectedEvent { event: xml::reader::events::XmlEvent, depth: usize },
@@ -15,6 +25,77 @@ pub enum DecodeError {
 
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
+
+impl FromError<schema::SchemaError> for DecodeError {
+    fn from_error(e: schema::SchemaError) -> DecodeError {
+        DecodeError::SchemaError(e)
+    }
+}
+
+
+pub struct XmlElement<'a, B: 'a> {
+    pub attributes: Vec<XmlAttribute>,
+    pub namespace: XmlNamespace,
+    pub children: NestedEventReader<'a, B>,
+}
+
+impl<'a, B: Buffer + 'a> XmlElement<'a, B> {
+    pub fn get_attr(&self, key: &str) -> DecodeResult<&str> {
+        let find_result = self.attributes.iter()
+            .find(|&attr| attr.name.local_name == key);
+        match find_result {
+            Some(e) => Ok(&e.value[]),
+            None => Err(DecodeError::AttributeNotFound(key.to_owned()))
+        }
+    }
+
+    pub fn read_whole_text(mut self) -> DecodeResult<String> {
+        let mut text = String::new();
+        loop {
+            match self.children.next() {
+                Some(NestedEvent::Characters(s)) => { text.push_str(&s[]); }
+                Some(NestedEvent::Error(e)) => {
+                    return Err(DecodeError::XmlError(e));
+                }
+                Some(_) => { }
+                None => { break; }
+            }
+        }
+        Ok(text)
+    }
+}
+
+impl<'a, 'b, A: 'a, B: 'b> PartialEq<XmlElement<'b, B>> for XmlElement<'a, A> {
+    fn eq(&self, other: &XmlElement<'b, B>) -> bool {
+        self.attributes == other.attributes &&
+            self.namespace == other.namespace
+    }
+}
+
+impl<'a, B: 'a> fmt::Show for XmlElement<'a, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "Element("));
+        let ns = &self.namespace.0;
+        if !ns.is_empty() {
+            try!(write!(f, "["));
+            let mut first = true;
+            for (key, value) in ns.iter() {
+                if first { first = false } else { try!(write!(f, ", ")) }
+                try!(write!(f, "{:?}=\"{:?}\"", key, value));
+            }
+            try!(write!(f, "]"));
+        }
+        if !self.attributes.is_empty() {
+            try!(write!(f, ", "));
+            let mut first = true;
+            for attr in self.attributes.iter() {
+                if first { first = false } else { try!(write!(f, ", ")) }
+                try!(write!(f, "{:?}=\"{:?}\"", attr.name, attr.value));
+            }
+        }
+        write!(f, ")")
+    }
+}
 
 pub struct NestedEventReader<'a, B: 'a> {
     reader: &'a mut xml::EventReader<B>,
@@ -27,12 +108,17 @@ impl<'a, B: Buffer> NestedEventReader<'a, B> {
     }
 
     #[inline]
+    fn next_event(&mut self) -> x {
+        self.reader.next()
+    }
+
+    #[inline]
     pub fn next(&mut self) -> Option<events::NestedEvent<B>> {
         if self.finished {
             None
         } else {
             use self::NestedEvent as n;
-            let ev = match self.reader.next() {
+            let ev = match self.next_event() {
                 x::StartDocument { version, encoding, standalone } =>
                 n::StartDocument { version: version,
                                    encoding: encoding,
@@ -47,11 +133,13 @@ impl<'a, B: Buffer> NestedEventReader<'a, B> {
                 n::ProcessingInstruction { name: name, data: data },
 
                 x::StartElement { name, attributes, namespace } => {
-                    n::Element {
+                    n::Nested {
                         name: name,
-                        attributes: attributes,
-                        namespace: namespace,
-                        children: NestedEventReader::new(self.reader)
+                        element: XmlElement {
+                            attributes: attributes,
+                            namespace: namespace,
+                            children: NestedEventReader::new(self.reader)
+                        }
                     }
                 }
 
@@ -77,12 +165,20 @@ impl<'a, B: Buffer> NestedEventReader<'a, B> {
 
 #[unsafe_destructor]
 impl<'a, B: Buffer + 'a> Drop for NestedEventReader<'a, B> {
+    #[allow(unused_assignments)]
     #[inline]
     fn drop(&mut self) {
+        if self.finished {
+            return;
+        }
         // drain all remained events
         loop {
-            match self.reader.next() {
-                x::EndDocument | x::EndElement { .. } | x::Error(_) => break,
+            let mut depth = 0;
+            match self.next_event() {
+                x::EndDocument | x::Error(_) => break,
+                x::EndElement { .. } if depth <= 0 => break,
+                x::EndElement { .. } => { depth -= 1; }
+                x::StartElement { .. } => { depth += 1; }
                 _ => { }
             }
         }
@@ -92,16 +188,14 @@ impl<'a, B: Buffer + 'a> Drop for NestedEventReader<'a, B> {
 pub mod events {
     use std::fmt;
 
-    use xml::attribute::OwnedAttribute;
     use xml::common;
     use xml::common::{HasPosition, XmlVersion};
-    use xml::name::OwnedName;
-    use xml::namespace::Namespace;
     use xml::reader::events::XmlEvent as x;
     use self::NestedEvent as n;
 
-    use super::NestedEventReader;
+    use super::{XmlElement, XmlName};
 
+    #[derive(PartialEq)]
     pub enum NestedEvent<'a, B: 'a> {
         StartDocument {
             version: XmlVersion,
@@ -113,51 +207,15 @@ pub mod events {
             name: String, 
             data: Option<String> 
         },
-        Element { 
-            name: OwnedName,
-            attributes: Vec<OwnedAttribute>,
-            namespace: Namespace,
-            children: NestedEventReader<'a, B>,
+        Nested {
+            name: XmlName,
+            element: XmlElement<'a, B>
         },
         CData(String),
         Comment(String),
         Characters(String),
         Whitespace(String),
         Error(common::Error)
-    }
-
-    impl<'a, B> PartialEq for NestedEvent<'a, B> {
-        fn eq(&self, other: &NestedEvent<'a, B>) -> bool {
-            match (self, other) {
-                (&n::StartDocument { version: ref v1,
-                                     encoding: ref e1,
-                                     standalone: ref s1 },
-                 &n::StartDocument { version: ref v2,
-                                     encoding: ref e2,
-                                     standalone: ref s2 }) => {
-                    v1 == v2 && e1 == e2 && s1 == s2
-                }
-                (&n::EndDocument, &n::EndDocument) => { true }
-                (&n::ProcessingInstruction { name: ref n1, data: ref d1 },
-                 &n::ProcessingInstruction { name: ref n2, data: ref d2 }) => {
-                    n1 == n2 && d1 == d2
-                }
-                (&n::Element { name: ref n1,
-                               attributes: ref a1,
-                               namespace: ref ns1, .. },
-                 &n::Element { name: ref n2,
-                               attributes: ref a2,
-                               namespace: ref ns2, .. }) => {
-                    n1 == n2 && a1 == a2 && ns1 == ns2
-                }
-                (&n::CData(ref c1),      &n::CData(ref c2)     ) => { c1 == c2 }
-                (&n::Comment(ref c1),    &n::Comment(ref c2)   ) => { c1 == c2 }
-                (&n::Characters(ref c1), &n::Characters(ref c2)) => { c1 == c2 }
-                (&n::Whitespace(ref c1), &n::Whitespace(ref c2)) => { c1 == c2 }
-                (&n::Error(ref e1),      &n::Error(ref e2)     ) => { e1 == e2 }
-                (_, _) => { false }
-            }
-        }
     }
 
     impl<'a, B> PartialEq<x> for NestedEvent<'a, B> {
@@ -176,9 +234,9 @@ pub mod events {
                  &x::ProcessingInstruction { name: ref n2, data: ref d2 }) => {
                     n1 == n2 && d1 == d2
                 }
-                (&n::     Element { name: ref n1,
-                                    attributes: ref a1,
-                                    namespace: ref ns1, .. },
+                (&n::Nested { name: ref n1,
+                              element: XmlElement { attributes: ref a1,
+                                                    namespace: ref ns1, .. } },
                  &x::StartElement { name: ref n2,
                                     attributes: ref a2,
                                     namespace: ref ns2 }) => {
@@ -213,24 +271,8 @@ pub mod events {
                     }
                     write!(f, ")")
                 }
-                n::Element { ref name, ref attributes,
-                             namespace: Namespace(ref namespace), .. } => {
-                    try!(write!(f, "Element({:?}, {:?}", name, namespace));
-                    if !attributes.is_empty() {
-                        try!(write!(f, ", ["));
-                        let mut first = true;
-                        for attr in attributes.iter() {
-                            if first {
-                                first = false;
-                            } else {
-                                try!(write!(f, ", "));
-                            }
-                            try!(write!(f, "{:?} -> {:?}",
-                                        attr.name, attr.value));
-                        }
-                    }
-                    write!(f, "])")
-                }
+                n::Nested { ref name, ref element } =>
+                    write!(f, "Nested({:?}, {:?})", name, element),
                 n::Comment(ref data) =>
                     write!(f, "Comment({:?})", data),
                 n::CData(ref data) =>
