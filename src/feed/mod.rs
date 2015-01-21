@@ -152,10 +152,11 @@ impl Metadata {
 
 impl Default for Metadata {
     fn default() -> Metadata {
-        use chrono::{NaiveDateTime, Offset};
-        let default_datetime = FixedOffset::east(0).from_local_datetime(
-            &NaiveDateTime::from_num_seconds_from_unix_epoch(0, 0)
-        ).earliest().unwrap();
+        use chrono::{DateTime, NaiveDateTime};
+        let default_datetime = DateTime::from_utc(
+            NaiveDateTime::from_num_seconds_from_unix_epoch(0, 0),
+            FixedOffset::east(0)
+        );
         Metadata {
             id: Default::default(),
             title: Default::default(),
