@@ -1,6 +1,12 @@
+env:
+  global:
+    - secure: sSTxBWRmUc6kl/P59HHZegW9q1c4rYj8c/ccsVvT1QXDewD+8QmKRE3jWkupVvZwURiydfcZeav04ivkTc7GI6tzQ0WuBIv4M1rjCsFnje4MJWkEdHxS5OergXSk1clHlvOmKdd+ib28r/jHrchGG1slzGtM6KnQJ7Rzyfl/dcU=
 before_install:
   - curl -L https://static.rust-lang.org/rustup.sh -O
 install:
   - sudo sh rustup.sh
 script:
-  - cargo test
+  - cargo test --verbose
+  - cargo doc --verbose
+after_script:
+  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
