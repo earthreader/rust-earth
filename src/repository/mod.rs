@@ -80,8 +80,13 @@ impl FromError<IoError> for RepositoryError {
 /// consists of multiple sequential strings e.g. `['dir', 'subdir', 'key']`.
 /// You can `list()` all subkeys in the upper key as well e.g.:
 ///
-/// ```ignore
+/// ```
+/// # use earth::test_utils::temp_dir;
+/// # use earth::repository::{FileSystemRepository, Repository};
+/// # let tmpdir = temp_dir();
+/// # let repository = FileSystemRepository::from_path(tmpdir.path(), true).unwrap();
 /// repository.list(&["dir", "subdir"])
+/// # ;
 /// ```
 pub trait Repository {
     /// Read the content from the `key`.
