@@ -1,198 +1,64 @@
-use std::borrow::ToOwned;
-use std::default::Default;
-use std::ops::{Deref, DerefMut};
+use std::fmt;
+use std::str::from_utf8;
 
-use chrono::{DateTime, FixedOffset};
-use xml;
+use mimetype::MimeType;
 
-use parser::base::NestedEventReader;
-use parser::base::NestedEvent::Nested;
-use schema::FromSchemaReader;
+pub use self::category::Category;
+pub use self::content::Content;
+pub use self::entry::Entry;
+pub use self::feed::Feed;
+pub use self::generator::Generator;
+pub use self::link::{Link, LinkIteratorExt, LinkList};
+pub use self::mark::Mark;
+pub use self::metadata::Metadata;
+pub use self::person::Person;
+pub use self::source::Source;
+pub use self::text::Text;
 
-pub use self::elemental::{Text, Person, Link, LinkList, Category, Content, Generator, Mark};
-pub use self::elemental::link::LinkIteratorExt;
-
-pub mod elemental;
+pub mod category;
+pub mod content;
+pub mod entry;
+pub mod feed;
+pub mod generator;
+pub mod link;
+pub mod mark;
+pub mod metadata;
+pub mod person;
 pub mod schema;
+pub mod source;
+pub mod text;
 
 
-#[derive(Default)]
-pub struct Feed {
-    pub source: Source,
+pub trait Blob {
+    fn mimetype(&self) -> MimeType;
 
-    pub entries: Vec<Entry>,
-}
+    fn is_text(&self) -> bool { self.mimetype().is_text() }
 
-impl Deref for Feed {
-    type Target = Source;
-    fn deref(&self) -> &Source { &self.source }
-}
+    fn as_bytes(&self) -> &[u8];
 
-impl DerefMut for Feed {
-    fn deref_mut(&mut self) -> &mut Source { &mut self.source }
-}
+    fn as_str(&self) -> Option<&str> { from_utf8(self.as_bytes()).ok() }
 
-impl Feed {
-    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Feed {
-        Feed {
-            source: Source::new_inherited(id, title, updated_at),
-            entries: Default::default(),
-        }
-    }
-
-    pub fn new<T, S: ?Sized>(id: T, title: Text,
-                             updated_at: DateTime<FixedOffset>) -> Feed
-        where T: Deref<Target=S>, S: ToOwned<String>
-    {
-        Feed::new_inherited(id.to_owned(), title, updated_at)
-    }
-}
-
-pub fn read_feed<B: Buffer>(buf: B) -> Feed {
-    let mut parser = xml::EventReader::new(buf);
-    let mut events = NestedEventReader::new(&mut parser);
-    let mut feed: Feed = Default::default();
-    for_each!(event in events.next() {
-        match event {
-            Nested { name: _, element } =>
-                FromSchemaReader::read_from(&mut feed, element).unwrap(),
-            _ => { }
-        }
-    });
-    feed
-}
-
-#[derive(Default)]
-pub struct Entry {
-    pub metadata: Metadata,
-
-    pub published_at: Option<DateTime<FixedOffset>>,
-    pub summary: Option<Text>,
-    pub content: Option<Content>,
-    pub source: Option<Source>,
-    pub read: Mark,
-    pub starred: Mark,
-}
-
-impl Deref for Entry {
-    type Target = Metadata;
-    fn deref(&self) -> &Metadata { &self.metadata }
-}
-
-impl DerefMut for Entry {
-    fn deref_mut(&mut self) -> &mut Metadata { &mut self.metadata }
-}
-
-impl Entry {
-    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
-        Entry {
-            metadata: Metadata::new_inherited(id, title, updated_at),
-            ..Default::default()
-        }
-    }
-
-    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
-        Entry::new(id, title, updated_at)
-    }
-}
-
-#[derive(Default)]
-pub struct Source {
-    pub metadata: Metadata,
-
-    pub subtitle: Option<Text>,
-    pub generator: Option<Generator>,
-    pub logo: Option<String>,
-    pub icon: Option<String>,
-}
-
-impl Deref for Source {
-    type Target = Metadata;
-    fn deref(&self) -> &Metadata { &self.metadata }
-}
-
-impl DerefMut for Source {
-    fn deref_mut(&mut self) -> &mut Metadata { &mut self.metadata }
-}
-
-impl Source {
-    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
-        Source {
-            metadata: Metadata::new_inherited(id, title, updated_at),
-            ..Default::default()
-        }
-    }
-
-    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
-        Source::new(id, title, updated_at)
-    }
-}
-
-pub struct Metadata {
-    pub id: String,
-    pub title: Text,
-    pub links: LinkList,
-    pub updated_at: DateTime<FixedOffset>,
-    pub authors: Vec<Person>,
-    pub contributors: Vec<Person>,
-    pub categories: Vec<Category>,
-    pub rights: Option<Text>,
-}
-
-impl Metadata {
-    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Metadata {
-        Metadata {
-            id: id,
-            title: title,
-            updated_at: updated_at,
-            ..Default::default()
-        }            
-    }
-}
-
-impl Default for Metadata {
-    fn default() -> Metadata {
-        use chrono::{DateTime, NaiveDateTime};
-        let default_datetime = DateTime::from_utc(
-            NaiveDateTime::from_num_seconds_from_unix_epoch(0, 0),
-            FixedOffset::east(0)
-        );
-        Metadata {
-            id: Default::default(),
-            title: Default::default(),
-            links: Default::default(),
-            updated_at: default_datetime,
-            authors: Default::default(),
-            contributors: Default::default(),
-            categories: Default::default(),
-            rights: Default::default(),
-        }
-    }
-}
-
-pub fn get_mut_or_set<T, F>(opt: &mut Option<T>, f: F) -> &mut T
-    where F: Fn() -> T
-{
-    if let Some(v) = opt.as_mut() {
-        return v;
-    }
-    unsafe {
-        let opt: *mut Option<T> = opt;
-        let opt: &mut Option<T> = opt.as_mut().unwrap();
-        *opt = Some(f());
-        opt.as_mut().unwrap()
-    }
-}
-
-pub fn set_default<T: Default>(opt: &mut Option<T>) -> &mut T {
-    get_mut_or_set(opt, Default::default)
+    /// Get the secure HTML string of the text.  If it's a plain text, this
+    /// returns entity-escaped HTML string, if it's a HTML text, `value` is
+    /// sanitized, and if it's a binary data, this returns base64-encoded
+    /// string.
+    ///
+    /// ```ignore
+    /// # use earth::feed::Text;
+    /// let text = Text::text("<Hello>");
+    /// let html = Text::html("<script>alert(1);</script><p>Hello</p>");
+    /// assert_eq!(format!("{}", text.sanitized_html(None)), "&lt;Hello&gt;");
+    /// assert_eq!(format!("{}", html.sanitized_html(None)), "<p>Hello</p>");
+    /// ```
+    fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
+        Box<fmt::String + 'a>;
 }
 
 
 #[cfg(test)]
 mod test {
-    use super::{Feed, read_feed};
-    use super::elemental::{Link, Person, Text};
+    use super::{Feed, Link, Person, Text};
+    use super::feed::read_feed;
 
     use chrono::{Offset, UTC};
     

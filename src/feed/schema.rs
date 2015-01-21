@@ -12,7 +12,7 @@ use parser::base::{DecodeResult, DecodeError, XmlElement, XmlName};
 use parser::base::NestedEvent::Nested;
 use schema::{Codec, DocumentElement, FromSchemaReader, Mergeable};
 
-use feed::{set_default};
+use util::set_default;
 
 
 /// The XML namespace name used for Atom (RFC 4287).
