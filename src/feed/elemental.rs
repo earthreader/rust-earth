@@ -173,8 +173,35 @@ pub mod person {
             Ok(())
         }
     }
-}
 
+    #[cfg(test)]
+    mod test {
+        use super::{Person};
+
+        #[test]
+        fn test_person_str() {
+            assert_eq!(Person { name: "Hong Minhee".to_string(),
+                                uri: None, email: None }.to_string(),
+                       "Hong Minhee");
+            assert_eq!(Person { name: "Hong Minhee".to_string(),
+                                uri: Some("http://dahlia.kr/".to_string()),
+                                email: None }.to_string(),
+                       "Hong Minhee <http://dahlia.kr/>");
+            let email = concat!("\x6d\x69\x6e\x68\x65\x65\x40\x64",
+                                "\x61\x68\x6c\x69\x61\x2e\x6b\x72");
+            assert_eq!(Person { name: "Hong Minhee".to_string(),
+                                uri: None,
+                                email: Some(email.to_string()) }.to_string(),
+                       format!("Hong Minhee <{}>", email));
+            assert_eq!("홍민희 <http://dahlia.kr/>",
+                       Person {
+                           name: "홍민희".to_string(),
+                           uri: Some("http://dahlia.kr/".to_string()),
+                           email: Some(email.to_string()),
+                       }.to_string());
+        }
+    }
+}
 
 #[unstable]
 pub mod link {
@@ -453,38 +480,5 @@ pub mod mark {
                 _    => self,
             }
         }
-    }
-}
-
-
-#[cfg(test)]
-mod test {
-    use super::{Person};
-
-    macro_rules! w {
-        ($expr:expr) => { format!("{}", $expr) }
-    }
-
-    #[test]
-    fn test_person_str() {
-        assert_eq!(w!(Person { name: "Hong Minhee".to_string(),
-                               uri: None, email: None }),
-                   "Hong Minhee");
-        assert_eq!(w!(Person { name: "Hong Minhee".to_string(),
-                               uri: Some("http://dahlia.kr/".to_string()),
-                               email: None }),
-                   "Hong Minhee <http://dahlia.kr/>");
-        let email = concat!("\x6d\x69\x6e\x68\x65\x65\x40\x64",
-                            "\x61\x68\x6c\x69\x61\x2e\x6b\x72");
-        assert_eq!(w!(Person { name: "Hong Minhee".to_string(),
-                               uri: None,
-                               email: Some(email.to_string()) }),
-                   format!("Hong Minhee <{}>", email));
-        assert_eq!("홍민희 <http://dahlia.kr/>", w!(
-            Person {
-                name: "홍민희".to_string(),
-                uri: Some("http://dahlia.kr/".to_string()),
-                email: Some(email.to_string()),
-            }));
     }
 }
