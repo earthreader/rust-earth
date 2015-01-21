@@ -217,16 +217,14 @@ fn parse_text_construct<B: Buffer>(element: XmlElement<B>,
                                    -> DecodeResult<feed::Text>
 {
     let text_type = match element.get_attr("type") {
-        Ok("text/plaln") | Ok("text") => feed::TextType::Text,
-        Ok("text/html") | Ok("html") => feed::TextType::Html,
-        Ok(_) => { feed::TextType::Text },  // TODO
-        Err(AttributeNotFound(_)) => feed::TextType::Text,
+        Ok("text/plaln") | Ok("text") => "text",
+        Ok("text/html") | Ok("html") => "html",
+        Ok("application/xhtml+xml") | Ok("xhtml") => "xhtml",
+        Ok(_) => "text",
+        Err(AttributeNotFound(_)) => "text",
         Err(e) => { return Err(e); }
     };
     let text = feed::Text::new(text_type, try!(element.read_whole_text()));
-    // else if text_type == "xhtml" {
-    //     text.fields.insert("value".to_string(), feed::Str("".to_string()));  // TODO
-    // }
     Ok(text)
 }
 

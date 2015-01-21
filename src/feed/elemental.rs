@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 
-pub use self::text::{Text, TextType};
+pub use self::text::Text;
 pub use self::person::Person;
 pub use self::link::Link;
 pub use self::mark::Mark;
@@ -17,47 +17,63 @@ pub mod text {
     use html::{Html};
     use sanitizer::{clean_html, escape, sanitize_html};
 
-    /// The type of the text. It corresponds to :rfc:`4287#section-3.1.1` (section 3.1.1).
-    ///
-    /// Note: It currently does not support `xhtml`.
-    #[unstable]
-    #[derive(Copy, PartialEq, Eq, Show)]
-    pub enum TextType { Text, Html }
-
-    impl Default for TextType {
-        fn default() -> TextType { TextType::Text }
-    }
-
     /// Text construct defined in :rfc:`4287#section-3.1` (section 3.1).
     ///
     /// RFC: <https://tools.ietf.org/html/rfc4287#section-3.1>
+    ///
+    /// Note: It currently does not support `xhtml`.
     #[unstable]
-    #[derive(Default, PartialEq, Eq, Show)]
-    pub struct Text {
-        pub type_: TextType,
+    #[derive(PartialEq, Eq, Show)]
+    pub enum Text {
+        /// The plain text content.  It corresponds to :rfc:`4287#section-3.1.1.1` (section 3.1.1.1).
+        ///
+        /// [rfc-text-1.1]: https://tools.ietf.org/html/rfc4287#section-3.1.1.1
+        Plain(String),
 
-        /// The content of the text.  Interpretation for this has to differ
-        /// according to its `type_`.  It corresponds to :rfc:`4287#section-3.1.1.1` (section 3.1.1.1) if `type_` is `TextType::Text`, and :rfc:`4287#section-3.1.1.2` (section 3.1.1.2) if `type_` is `TextType::Html`.
-        pub value: String,
+        /// The HTML content.  It corresponds to :rfc:`4287#section-3.1.1.2` (section 3.1.1.2).
+        ///
+        /// [rfc-text-1.2]: https://tools.ietf.org/html/rfc4287#section-3.1.1.2
+        Html(String),
     }
 
     impl Text {
-        pub fn new<T, S: ?Sized>(type_: TextType, value: T) -> Text
+        pub fn new<T, S: ?Sized>(type_: &str, value: T) -> Text
             where T: Deref<Target=S>, S: ToOwned<String>
         {
-            Text { type_: type_, value: value.to_owned() }
+            match type_ {
+                "text" => Text::plain(value),
+                "html" => Text::html(value),
+                _ => Text::plain(value),
+            }
         }
 
+        #[deprecated = "use Text::Plain(value.to_string()) or Text::plain(value) instead"]
         pub fn text<T, S: ?Sized>(value: T) -> Text
             where T: Deref<Target=S>, S: ToOwned<String>
         {
-            Text::new(TextType::Text, value.to_owned())
+            Text::plain(value)
+        }
+
+        pub fn plain<T, S: ?Sized>(value: T) -> Text
+            where T: Deref<Target=S>, S: ToOwned<String>
+        {
+            Text::Plain(value.to_owned())
         }
 
         pub fn html<T, S: ?Sized>(value: T) -> Text
             where T: Deref<Target=S>, S: ToOwned<String>
         {
-            Text::new(TextType::Html, value.to_owned())
+            Text::Html(value.to_owned())
+        }
+
+        /// The type of the text.  It corresponds to :rfc:`4287#section-3.1.1` (section 3.1.1).
+        ///
+        /// [rfc-text-1]: https://tools.ietf.org/html/rfc4287#section-3.1.1
+        pub fn type_(&self) -> &'static str {
+            match *self {
+                Text::Plain(_) => "text",
+                Text::Html(_) => "html",
+            }
         }
 
         /// Get the secure HTML string of the text.  If it's a plain text, this
@@ -75,21 +91,26 @@ pub mod text {
         pub fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
             Box<fmt::String + 'a>
         {
-            let value: &'a _ = &self.value[];
-            match self.type_ {
-                TextType::Text =>
-                    Box::new(escape(value, true)) as Box<fmt::String>,
-                TextType::Html =>
-                    Box::new(sanitize_html(value, base_uri)) as Box<fmt::String>,
+            match *self {
+                Text::Plain(ref value) =>
+                    Box::new(escape(&value[], true)) as Box<fmt::String>,
+                Text::Html(ref value) =>
+                    Box::new(sanitize_html(&value[], base_uri)) as Box<fmt::String>,
             }
+        }
+    }
+
+    impl Default for Text {
+        fn default() -> Text {
+            Text::Plain("".to_owned())
         }
     }
 
     impl fmt::String for Text {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            match self.type_ {
-                TextType::Text => write!(f, "{}", self.value),
-                TextType::Html => write!(f, "{}", clean_html(&self.value[])),
+            match *self {
+                Text::Plain(ref value) => write!(f, "{}", value),
+                Text::Html(ref value) => write!(f, "{}", clean_html(&value[])),
             }
         }
     }

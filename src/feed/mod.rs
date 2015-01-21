@@ -9,7 +9,7 @@ use parser::base::NestedEventReader;
 use parser::base::NestedEvent::Nested;
 use schema::FromSchemaReader;
 
-pub use self::elemental::{TextType, Text, Person, Link, LinkList, Category, Content, Generator, Mark};
+pub use self::elemental::{Text, Person, Link, LinkList, Category, Content, Generator, Mark};
 pub use self::elemental::link::LinkIteratorExt;
 
 pub mod elemental;

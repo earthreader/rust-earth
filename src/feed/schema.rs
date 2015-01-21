@@ -1,5 +1,5 @@
 use super::{Category, Content, Generator, Entry, Feed, Mark, Metadata,
-            Link, Person, Source, Text, TextType};
+            Link, Person, Source, Text};
 
 use std::borrow::ToOwned;
 use std::default::Default;
@@ -153,14 +153,17 @@ impl FromSchemaReader for Text {
     fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
                             -> DecodeResult<()>
     {
-        self.type_ = match element.get_attr("type") {
-            Ok("text/plaln") | Ok("text") => TextType::Text,
-            Ok("text/html") | Ok("html") => TextType::Html,
-            Ok(_) => { TextType::Text },  // TODO
-            Err(DecodeError::AttributeNotFound(_)) => Default::default(),
+        let type_ = match element.get_attr("type") {
+            Ok("text") => "text",
+            Ok("html") => "html",
+            Ok(_type) => {
+                // TODO: should be warned
+                "text"
+            }
+            Err(DecodeError::AttributeNotFound(_)) => "text",
             Err(e) => { return Err(e); }
         };
-        self.value = element.read_whole_text().unwrap();
+        *self = Text::new(type_, try!(element.read_whole_text()));
         Ok(())
     }
 }
