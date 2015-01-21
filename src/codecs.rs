@@ -1,4 +1,7 @@
+use std::borrow::{IntoCow, ToOwned};
+use std::default::Default;
 use std::str::FromStr;
+use std::string::CowString;
 
 use chrono::{DateTime, FixedOffset};
 use chrono::{Timelike, Offset};
@@ -11,7 +14,14 @@ macro_rules! try_encode {
 }
 
 macro_rules! try_opt {
-    ($e:expr, $msg:expr) => (match $e { Some(e) => e, None => return Err(DecodeError($msg)) })
+    ($e:expr, $msg:expr) => (
+        match $e { Some(e) => e,
+                   None => return Err(DecodeError($msg, None)) }
+    );
+    ($e:expr, $msg:expr, $detail:expr) => (
+        match $e { Some(e) => e,
+                   None => return Err(DecodeError($msg, Some($detail))) }
+    )
 }
 
 macro_rules! parse_field {
@@ -19,11 +29,13 @@ macro_rules! parse_field {
         {
             let value = $caps.name($field);
             try_opt!(value.and_then(FromStr::from_str),
-                     format!(concat!("invalid value for ", $field, ": {:?}"), value))
+                     concat!("invalid value for ", $field),
+                     format!("{:?}", value))
         }
     )
 }
 
+#[allow(missing_copy_implementations)]
 pub struct RFC3339;
 
 impl Codec<DateTime<FixedOffset>> for RFC3339 {
@@ -58,7 +70,10 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
             r#"\s*$"#,
         ));
         let caps = match pattern.captures(r) {
-            None => { return Err(DecodeError(format!("\"{}\" is not valid RFC 3339 date time string", r))); }
+            None => {
+                return Err(DecodeError("invalid RFC 3339 date time string",
+                                       Some(r.to_owned())));
+            }
             Some(c) => c,
         };
         let offset = if caps.name("tz_offset").map_or(false, |x| x.len() > 0) {
@@ -82,8 +97,65 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
                 parse_field!(caps, "minute"),
                 parse_field!(caps, "second"),
                 try_opt!(FromStr::from_str(&*microsecond),
-                         format!("invalid value for microsecond: {}", microsecond)));
+                         "invalid value for microsecond",
+                         format!("{:?}", microsecond)));
         Ok(dt)
+    }
+}
+
+pub struct Boolean {
+    true_texts: Vec<CowString<'static>>,
+    false_texts: Vec<CowString<'static>>,
+    default_value: bool
+}
+
+impl Boolean {
+    pub fn new<T, U>(true_texts: &[T], false_texts: &[U],
+                     default_value: bool) -> Boolean
+        where T: IntoCow<'static, String, str> + Clone,
+              U: IntoCow<'static, String, str> + Clone
+    {
+        Boolean {
+            true_texts: true_texts.iter().map(|t| t.clone().into_cow())
+                                  .collect(),
+            false_texts: false_texts.iter().map(|t| t.clone().into_cow())
+                                    .collect(),
+            default_value: default_value
+        }
+    }
+}
+
+impl Default for Boolean {
+    fn default() -> Boolean {
+        Boolean {
+            true_texts: vec!["true".into_cow()],
+            false_texts: vec!["false".into_cow()],
+            default_value: false
+        }
+    }
+}
+
+impl Codec<bool> for Boolean {
+    fn encode(&self, value: &bool, w: &mut Writer) -> SchemaResult<()> {
+        match write!(w, "{}", match *value {
+            true => &self.true_texts[0],
+            false => &self.false_texts[0]
+        }) {
+            Ok(()) => Ok(()),
+            Err(_) => Err(EncodeError),  // TODO
+        }
+    }
+
+    fn decode(&self, r: &str) -> SchemaResult<bool> {
+        if self.true_texts.iter().any(|&: t| &t[] == r) {
+            Ok(true)
+        } else if self.false_texts.iter().any(|&: f| &f[] == r) {
+            Ok(false)
+        } else if r.is_empty() {
+            Ok(self.default_value)
+        } else {
+            Err(DecodeError("invalid string", None))
+        }
     }
 }
 

@@ -456,6 +456,155 @@ pub mod mark {
     }
 }
 
+pub mod schema {
+    use super::{Category, Content, Generator, Mark,
+                Link, Person, Text, TextType};
+
+    use std::borrow::ToOwned;
+    use std::default::Default;
+    use std::str::FromStr;
+
+    use chrono::{DateTime, FixedOffset};
+
+    use codecs;
+    use parser::base::{DecodeResult, DecodeError, XmlElement, XmlName};
+    use parser::base::NestedEvent::Nested;
+    use schema::{Codec, FromSchemaReader};
+
+    use feed::{set_default};
+
+    impl FromSchemaReader for Text {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            self.type_ = match element.get_attr("type") {
+                Ok("text/plaln") | Ok("text") => TextType::Text,
+                Ok("text/html") | Ok("html") => TextType::Html,
+                Ok(_) => { TextType::Text },  // TODO
+                Err(DecodeError::AttributeNotFound(_)) => Default::default(),
+                Err(e) => { return Err(e); }
+            };
+            self.value = element.read_whole_text().unwrap();
+            Ok(())
+        }
+    }
+
+    impl FromSchemaReader for Option<Person> {
+        fn read_from<B: Buffer>(&mut self, mut element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            *self = None;
+            loop {
+                match element.children.next() {
+                    Some(Nested { name, element: child }) => {
+                        try!(self.match_child(&name, child))
+                    }
+                    None => { break; }
+                    Some(_) => { }     
+                }
+            }
+            if self.as_ref().map_or(true, |p| p.name.is_empty()) {
+                *self = None;
+            }
+            Ok(())
+        }
+
+        fn match_child<B: Buffer>(&mut self, name: &XmlName,
+                                  element: XmlElement<B>)
+                                  -> DecodeResult<()>
+        {
+            match &name.local_name[] {
+                "name" => {
+                    let name = try!(element.read_whole_text());
+                    set_default(self).name = name;
+                }
+                "uri" => {
+                    let uri = Some(try!(element.read_whole_text()));
+                    set_default(self).uri = uri;
+                }
+                "email" => {
+                    let email = Some(try!(element.read_whole_text()));
+                    set_default(self).email = email;
+                }
+                _ => { return Err(DecodeError::NoResult); }
+            }
+            Ok(())
+        }
+    }
+
+    impl FromSchemaReader for Link {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            self.uri = try!(element.get_attr("href")).to_owned();
+            self.relation = element.get_attr("rel")
+                                   .unwrap_or("alternate").to_owned();
+            self.mimetype = element.get_attr("type").ok().map(ToOwned::to_owned);
+            self.language = element.get_attr("hreflang").ok().map(ToOwned::to_owned);
+            self.title = element.get_attr("title").ok().map(ToOwned::to_owned);
+            self.byte_size = element.get_attr("length").ok()
+                                    .and_then(FromStr::from_str);
+            Ok(())
+        }
+    }
+
+    impl FromSchemaReader for Category {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            self.term = try!(element.get_attr("term")).to_owned();
+            self.scheme_uri = element.get_attr("scheme").ok().map(|v| v.to_string());
+            self.label = element.get_attr("label").ok().map(|v| v.to_string());
+            Ok(())
+        }
+    }
+
+    impl FromSchemaReader for Generator {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            self.uri = element.get_attr("uri").ok().map(|v| v.to_string());  // TODO
+            self.version = element.get_attr("version").ok().map(|v| v.to_string());
+            self.value = try!(element.read_whole_text());
+            Ok(())
+        }
+    }
+
+    impl FromSchemaReader for Content {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            self.source_uri = element.get_attr("src").ok().map(|v| v.to_string());
+            try!(self.text.read_from(element));  // TODO
+            Ok(())
+        }
+    }
+
+    impl FromSchemaReader for Mark {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            self.updated_at = {
+                let updated_at = try!(element.get_attr("updated"));
+                Some(try!(codecs::RFC3339.decode(updated_at)))
+            };
+            let content = try!(element.read_whole_text());
+            let codec: codecs::Boolean = Default::default();
+            self.marked = try!(codec.decode(&content[]));
+            Ok(())
+        }        
+    }
+
+    pub fn parse_datetime<B: Buffer>(element: XmlElement<B>)
+                                     -> DecodeResult<DateTime<FixedOffset>>
+    {
+        match codecs::RFC3339.decode(&*try!(element.read_whole_text())) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(DecodeError::SchemaError(e)),
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod test {
