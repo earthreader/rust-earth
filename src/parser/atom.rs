@@ -12,6 +12,7 @@ use super::base::DecodeError::{AttributeNotFound, SchemaError};
 use super::base::NestedEvent::{EndDocument, Nested};
 use feed;
 use codecs;
+use mimetype::MimeType;
 use schema::Codec;
 
 static ATOM_XMLNS_SET: [&'static str; 2] = [
@@ -306,9 +307,16 @@ fn parse_generator<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
 fn parse_content<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
                             -> DecodeResult<feed::Content> {
     session.reset_xml_base(&element.attributes[]);
-    let source_uri = element.get_attr("src").ok().map(|v| v.to_string());
-    Ok(feed::Content {
-        text: try!(parse_text_construct(element, session.clone())),
-        source_uri: source_uri,  // TODO
-    })
+    let content_type = match element.get_attr("type") {
+        Ok("text/plaln") | Ok("text") => MimeType::Text,
+        Ok("text/html") | Ok("html") => MimeType::Html,
+        Ok("application/xhtml+xml") | Ok("xhtml") => MimeType::Xhtml,
+        Ok(_) => MimeType::Text,
+        Err(AttributeNotFound(_)) => MimeType::Text,
+        Err(e) => { return Err(e); }
+    };
+    let source_uri = element.get_attr("src").ok().map(|v| v.to_string());  // TODO
+    Ok(feed::Content::new(content_type,
+                          try!(element.read_whole_text()).into_bytes(),
+                          source_uri).unwrap())
 }

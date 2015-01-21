@@ -1,3 +1,7 @@
+use std;
+
+use mimetype::MimeType;
+
 pub use self::text::Text;
 pub use self::person::Person;
 pub use self::link::{Link, LinkIteratorExt, LinkList};
@@ -7,14 +11,45 @@ pub use self::generator::Generator;
 pub use self::mark::Mark;
 
 
+pub trait Blob {
+    fn mimetype(&self) -> MimeType;
+
+    fn is_text(&self) -> bool { self.mimetype().is_text() }
+
+    fn as_bytes(&self) -> &[u8];
+
+    fn as_str(&self) -> Option<&str> {
+        std::str::from_utf8(self.as_bytes()).ok()
+    }
+
+    /// Get the secure HTML string of the text.  If it's a plain text, this
+    /// returns entity-escaped HTML string, if it's a HTML text, `value` is
+    /// sanitized, and if it's a binary data, this returns base64-encoded
+    /// string.
+    ///
+    /// ```ignore
+    /// # use earth::feed::Text;
+    /// let text = Text::text("<Hello>");
+    /// let html = Text::html("<script>alert(1);</script><p>Hello</p>");
+    /// assert_eq!(format!("{}", text.sanitized_html(None)), "&lt;Hello&gt;");
+    /// assert_eq!(format!("{}", html.sanitized_html(None)), "<p>Hello</p>");
+    /// ```
+    fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
+        Box<std::fmt::String + 'a>;
+}
+
+
 #[unstable]
 pub mod text {
+    use super::Blob;
+
     use std::borrow::ToOwned;
     use std::default::Default;
     use std::ops::Deref;
     use std::fmt;
 
     use html::{Html};
+    use mimetype::MimeType;
     use sanitizer::{clean_html, escape, sanitize_html};
 
     /// Text construct defined in :rfc:`4287#section-3.1` (section 3.1).
@@ -75,29 +110,6 @@ pub mod text {
                 Text::Html(_) => "html",
             }
         }
-
-        /// Get the secure HTML string of the text.  If it's a plain text, this
-        /// returns entity-escaped HTML string, and if it's a HTML text,
-        /// `value` is sanitized.
-        ///
-        /// ```ignore
-        /// # use earth::feed::Text;
-        /// let text = Text::text("<Hello>");
-        /// let html = Text::html("<script>alert(1);</script><p>Hello</p>");
-        /// assert_eq!(format!("{}", text.sanitized_html(None)), "&lt;Hello&gt;");
-        /// assert_eq!(format!("{}", html.sanitized_html(None)), "<p>Hello</p>");
-        /// ```
-        #[unstable = "incomplete"]
-        pub fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
-            Box<fmt::String + 'a>
-        {
-            match *self {
-                Text::Plain(ref value) =>
-                    Box::new(escape(&value[], true)) as Box<fmt::String>,
-                Text::Html(ref value) =>
-                    Box::new(sanitize_html(&value[], base_uri)) as Box<fmt::String>,
-            }
-        }
     }
 
     impl Default for Text {
@@ -121,9 +133,44 @@ pub mod text {
         }
     }
 
+    impl Blob for Text {
+        fn mimetype(&self) -> MimeType {
+            match *self {
+                Text::Plain(_) => MimeType::Text,
+                Text::Html(_) => MimeType::Html,
+            }
+        }
+
+        fn is_text(&self) -> bool { true }
+
+        fn as_bytes(&self) -> &[u8] { self.as_str().unwrap().as_bytes() }
+
+        fn as_str(&self) -> Option<&str> {
+            let value = match *self {
+                Text::Plain(ref value) => value,
+                Text::Html(ref value) => value,
+            };
+            Some(&value[])
+        }
+
+        #[unstable = "incomplete"]
+        fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
+            Box<fmt::String + 'a>
+        {
+            match *self {
+                Text::Plain(ref value) =>
+                    Box::new(escape(&value[], true)) as Box<fmt::String>,
+                Text::Html(ref value) =>
+                    Box::new(sanitize_html(&value[], base_uri)) as Box<fmt::String>,
+            }
+        }
+    }
+
     #[cfg(test)]
     mod test {
         use super::Text;
+
+        use feed::elemental::Blob;
 
         #[ignore]
         #[test]
@@ -735,6 +782,7 @@ pub mod category {
 
         use std::default::Default;
 
+        #[test]
         fn test_category_str() {
             assert_eq!(Category { term: "python".to_string(),
                                   ..Default::default() }.to_string(),
@@ -749,67 +797,109 @@ pub mod category {
 
 #[unstable]
 pub mod content {
-    use super::Text;
+    use super::Blob;
 
     use std::borrow::ToOwned;
+    use std::default::Default;
+    use std::fmt;
     use std::ops::Deref;
+    use std::str::{Utf8Error, from_utf8, from_utf8_unchecked};
+    
+    use serialize::base64;
+    use serialize::base64::ToBase64;
 
-    use regex;
+    use mimetype::MimeType;
+    use parser::base::{DecodeError, DecodeResult, XmlElement};
+    use sanitizer::{escape, sanitize_html};
+    use schema::{FromSchemaReader};
 
-    #[derive(PartialEq, Eq, Show)]
-    pub enum MimeType {
-        Text,
-        Html,
-        Xhtml,
-        Other(String),
+    /// Content construct defined in :rfc:`4287#section-4.1.3` (section 4.1.3).
+    #[derive(Clone, Show)]
+    pub struct Content {
+        mimetype: MimeType,
+        body: Vec<u8>,
+        source_uri: Option<String>,
     }
 
-    static MIMETYPE_PATTERN: regex::Regex = regex!(concat!(
-        r#"^"#,
-        r#"(?P<type>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
-        r#"/"#,
-        r#"(?P<subtype>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
-        r#"$"#));
+    impl Content {
+        pub fn new<T, S: ?Sized>(mimetype: MimeType, body: Vec<u8>,
+                                 source_uri: Option<T>)
+                                 -> Result<Content, Utf8Error>
+            where T: Deref<Target=S>, S: ToOwned<String>
+        {
+            if mimetype.is_text() {
+                try!(from_utf8(&body[]));
+            }
+            Ok(Content {
+                mimetype: mimetype,
+                body: body,
+                source_uri: source_uri.map(|e| e.to_owned())
+            })
+        }
 
-    impl MimeType {
-        pub fn from_str(mimetype: &str) -> Option<MimeType> {
-            let captures = MIMETYPE_PATTERN.captures(mimetype);
-            if let Some(captures) = captures {
-                Some(match (captures.name("type"), captures.name("subtype")) {
-                    (Some("text"), Some("plain")) => MimeType::Text,
-                    (Some("text"), Some("html")) => MimeType::Html,
-                    _ => MimeType::Other(mimetype.to_owned()),
+        pub fn from_str<T, S: ?Sized>(mimetype: &str, text: String,
+                                      source_uri: Option<T>) -> Option<Content>
+            where T: Deref<Target=S>, S: ToOwned<String>
+        {
+            let mimetype = match mimetype {
+                "text" | "" => Some(MimeType::Text),
+                "html" => Some(MimeType::Html),
+                _ => MimeType::from_str(mimetype),
+            };
+            if let Some(mimetype) = mimetype {
+                Some(Content {
+                    mimetype: mimetype,
+                    body: text.into_bytes(),
+                    source_uri: source_uri.map(|e| e.to_owned()),
                 })
             } else {
                 None
             }
         }
 
-        pub fn mimetype(&self) -> &str {
-            match *self {
-                MimeType::Text => "text/plain",
-                MimeType::Html => "text/html",
-                MimeType::Xhtml => "application/xhtml+xml",
-                MimeType::Other(ref mimetype) => &mimetype[],
+        pub fn source_uri(&self) -> Option<&str> {
+            self.source_uri.as_ref().map(|e| &e[])
+        }
+    }
+
+    impl Blob for Content {
+        fn mimetype(&self) -> MimeType { self.mimetype.clone() }
+        fn is_text(&self) -> bool { self.mimetype.is_text() }
+        fn as_bytes(&self) -> &[u8] { &self.body[] }
+        fn as_str(&self) -> Option<&str> {
+            if self.is_text() {
+                Some(unsafe { from_utf8_unchecked(self.as_bytes()) })
+            } else {
+                None
+            }
+        }
+
+        fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
+            Box<fmt::String + 'a>
+        {
+            match self.mimetype {
+                MimeType::Text =>
+                    Box::new(escape(self.as_str().unwrap(), true))
+                    as Box<fmt::String>,
+                MimeType::Html | MimeType::Xhtml =>
+                    Box::new(sanitize_html(self.as_str().unwrap(), base_uri))
+                    as Box<fmt::String>,
+                ref mime if mime.is_text() =>
+                    Box::new(escape(self.as_str().unwrap(), true))
+                    as Box<fmt::String>,
+                _ =>
+                    Box::new(self.as_bytes().to_base64(base64::MIME))
+                    as Box<fmt::String>,
             }
         }
     }
 
-    /// Content construct defined in :rfc:`4287#section-4.1.3` (section 4.1.3).
-    #[derive(Default, Show)]
-    pub struct Content {
-        pub text: Text,
-        pub source_uri: Option<String>,
-    }
-
-    impl Content {
-        pub fn new<T, S: ?Sized>(mimetype: &str, text: String,
-                                 source_uri: Option<T>) -> Content
-            where T: Deref<Target=S>, S: ToOwned<String>
-        {
+    impl Default for Content {
+        fn default() -> Content {
             Content {
-                text: Text::new(mimetype, text),
-                source_uri: source_uri.map(|e| e.to_owned()),
+                mimetype: MimeType::Text,
+                body: vec![],
+                source_uri: None
             }
         }
     }
@@ -817,14 +907,42 @@ pub mod content {
     impl PartialEq for Content {
         fn eq(&self, other: &Content) -> bool {
             if self.source_uri.is_some() {
-                (self.text.type_() == other.text.type_() &&
+                (self.mimetype == other.mimetype &&
                  self.source_uri.as_ref() == other.source_uri.as_ref())
             } else {
-                self.text == other.text
+                self.body == other.body
             }
         }
     }
 
+    impl FromSchemaReader for Content {
+        fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                                -> DecodeResult<()>
+        {
+            let source_uri = element.get_attr("src").ok()
+                                    .map(|v| v.to_string());
+            let mimetype = {
+                let m = element.get_attr("type")
+                               .map(|v| (MimeType::from_str(v), v));
+                match m {
+                    Ok((Some(mimetype), _)) => mimetype,
+                    Ok((None, "text"))  => MimeType::Text,
+                    Ok((None, "html"))  => MimeType::Html,
+                    Ok((None, "xhtml")) => MimeType::Xhtml,
+                    Ok((None, _)) => MimeType::Text,  // TODO: should be an error
+                    Err(DecodeError::AttributeNotFound(_)) => MimeType::Text,
+                    Err(e) => { return Err(e); }
+                }
+            };
+            let content = try!(element.read_whole_text());
+            // TODO: if mimetype is binary, content should be decoded by base64
+            self.source_uri = source_uri;
+            self.mimetype = mimetype;
+            self.body = content.into_bytes();
+            Ok(())
+        }
+    }
+    
     #[cfg(nocompile)]
     mod test {
         use super::{Content, MimeType};

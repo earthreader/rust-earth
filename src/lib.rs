@@ -5,6 +5,7 @@
 #[no_link]
 extern crate regex_macros;
 
+extern crate serialize;
 extern crate regex;
 extern crate time;
 
@@ -18,6 +19,7 @@ pub mod test_utils;
 pub mod codecs;
 pub mod feed;
 pub mod html;
+pub mod mimetype;
 pub mod parser;
 pub mod repository;
 pub mod sanitizer;

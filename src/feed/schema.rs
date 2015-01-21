@@ -1,4 +1,4 @@
-use super::{Category, Content, Generator, Entry, Feed, Mark, Metadata,
+use super::{Category, Generator, Entry, Feed, Mark, Metadata,
             Link, Person, Source, Text};
 
 use std::borrow::ToOwned;
@@ -249,16 +249,6 @@ impl FromSchemaReader for Generator {
         self.uri = element.get_attr("uri").ok().map(|v| v.to_string()); // TODO
         self.version = element.get_attr("version").ok().map(|v| v.to_string());
         self.value = try!(element.read_whole_text());
-        Ok(())
-    }
-}
-
-impl FromSchemaReader for Content {
-    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
-                            -> DecodeResult<()>
-    {
-        self.source_uri = element.get_attr("src").ok().map(|v| v.to_string());
-        try!(self.text.read_from(element));  // TODO
         Ok(())
     }
 }
