@@ -1,6 +1,7 @@
-use std::borrow::{Cow, IntoCow, ToOwned};
+use std::borrow::{IntoCow, ToOwned};
 use std::default::Default;
 use std::str::FromStr;
+use std::string::CowString;
 
 use chrono::{DateTime, FixedOffset};
 use xml;
@@ -25,8 +26,8 @@ pub struct CrawlerHint;
 
 #[derive(Clone)]
 struct AtomSession<'a> {
-    xml_base: Cow<'a, String, str>,
-    element_ns: Cow<'a, String, str>,
+    xml_base: CowString<'a>,
+    element_ns: CowString<'a>,
 }
 
 impl<'a> AtomSession<'a> {
