@@ -1,8 +1,12 @@
 #![unstable]
 
+use std::default::Default;
+
 use chrono::{DateTime, FixedOffset};
-    
-use schema::{Mergeable};
+
+use codecs;    
+use parser::base::{DecodeResult, XmlElement};
+use schema::{Codec, FromSchemaReader, Mergeable};
 
 /// Represent whether the entry is read, starred, or tagged by user.
 ///
@@ -35,6 +39,22 @@ impl Mergeable for Mark {
         }
     }
 }
+
+impl FromSchemaReader for Mark {
+    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                            -> DecodeResult<()>
+    {
+        self.updated_at = {
+            let updated_at = try!(element.get_attr("updated"));
+            Some(try!(codecs::RFC3339.decode(updated_at)))
+        };
+        let content = try!(element.read_whole_text());
+        let codec: codecs::Boolean = Default::default();
+        self.marked = try!(codec.decode(&content[]));
+        Ok(())
+    }        
+}
+
 
 #[cfg(test)]
 mod test {

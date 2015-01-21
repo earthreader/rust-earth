@@ -2,7 +2,11 @@ use std::default::Default;
 
 use chrono::{DateTime, FixedOffset};
 
-use super::{Category, LinkList, Person, Text};
+use parser::base::{DecodeResult, XmlElement, XmlName};
+use schema::FromSchemaReader;
+use util::set_default;
+
+use super::{ATOM_XMLNS, Category, LinkList, Person, Text, parse_datetime};
 
 pub struct Metadata {
     pub id: String,
@@ -43,5 +47,48 @@ impl Default for Metadata {
             categories: Default::default(),
             rights: Default::default(),
         }
+    }
+}
+
+impl FromSchemaReader for Metadata {
+    fn match_child<B: Buffer>(&mut self, name: &XmlName,
+                              child: XmlElement<B>) -> DecodeResult<()> {
+        match (name.namespace_as_ref(), &name.local_name[]) {
+            (Some(ATOM_XMLNS), "id") => {
+                self.id = try!(child.read_whole_text());
+            }
+            (Some(ATOM_XMLNS), "title") => {
+                try!(self.title.read_from(child));
+            }
+            (Some(ATOM_XMLNS), "link") => {
+                self.links.push(try!(FromSchemaReader::build_from(child)));
+            }
+            (Some(ATOM_XMLNS), "updated") => {
+                self.updated_at = try!(parse_datetime(child));
+            }
+            (Some(ATOM_XMLNS), "modified") => {
+                self.updated_at = try!(parse_datetime(child));
+            }
+            (Some(ATOM_XMLNS), "author") => {
+                match try!(FromSchemaReader::build_from(child)) {
+                    Some(p) => self.authors.push(p),
+                    None => { }
+                }
+            }
+            (Some(ATOM_XMLNS), "contributor") => {
+                match try!(FromSchemaReader::build_from(child)) {
+                    Some(p) => self.contributors.push(p),
+                    None => { }
+                }
+            }
+            (Some(ATOM_XMLNS), "category") => {
+                self.categories.push(try!(FromSchemaReader::build_from(child)));
+            }
+            (Some(ATOM_XMLNS), "rights") => {
+                *set_default(&mut self.rights) = try!(FromSchemaReader::build_from(child));
+            }
+            _ => { }
+        }
+        Ok(())
     }
 }

@@ -6,7 +6,11 @@ use std::fmt;
 use std::ops::Deref;
 
 use html::{Html};
+use parser::base::{DecodeResult, DecodeError, XmlElement, XmlName};
+use parser::base::NestedEvent::Nested;
 use sanitizer::escape;
+use schema::FromSchemaReader;
+use util::set_default;
 
 /// Person construct defined in RFC 4287 (section 3.2).
 ///
@@ -69,6 +73,50 @@ impl Html for Person {
         Ok(())
     }
 }
+
+impl FromSchemaReader for Option<Person> {
+    fn read_from<B: Buffer>(&mut self, mut element: XmlElement<B>)
+                            -> DecodeResult<()>
+    {
+        *self = None;
+        loop {
+            match element.children.next() {
+                Some(Nested { name, element: child }) => {
+                    try!(self.match_child(&name, child))
+                }
+                None => { break; }
+                Some(_) => { }     
+            }
+        }
+        if self.as_ref().map_or(true, |p| p.name.is_empty()) {
+            *self = None;
+        }
+        Ok(())
+    }
+
+    fn match_child<B: Buffer>(&mut self, name: &XmlName,
+                              element: XmlElement<B>)
+                              -> DecodeResult<()>
+    {
+        match &name.local_name[] {
+            "name" => {
+                let name = try!(element.read_whole_text());
+                set_default(self).name = name;
+            }
+            "uri" => {
+                let uri = Some(try!(element.read_whole_text()));
+                set_default(self).uri = uri;
+            }
+            "email" => {
+                let email = Some(try!(element.read_whole_text()));
+                set_default(self).email = email;
+            }
+            _ => { return Err(DecodeError::NoResult); }
+        }
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 mod test {

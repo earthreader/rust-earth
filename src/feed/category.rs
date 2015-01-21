@@ -1,8 +1,10 @@
 #![unstable]
 
 use std::fmt;
+use std::borrow::ToOwned;
 
-use schema::Mergeable;
+use parser::base::{DecodeResult, XmlElement};
+use schema::{FromSchemaReader, Mergeable};
 
 /// Category element defined in :rfc:`4287#section-4.2.2` (section 4.2.2).
 #[derive(Default, Show)]
@@ -47,6 +49,19 @@ impl fmt::String for Category {
         write!(f, "{}", self.label.as_ref().unwrap_or(&self.term))
     }
 }
+
+impl FromSchemaReader for Category {
+    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                            -> DecodeResult<()>
+    {
+        self.term = try!(element.get_attr("term")).to_owned();
+        self.scheme_uri = element.get_attr("scheme").ok()
+                                 .map(|v| v.to_string());
+        self.label = element.get_attr("label").ok().map(|v| v.to_string());
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 mod test {

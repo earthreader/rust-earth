@@ -5,10 +5,13 @@ use std::default::Default;
 use std::fmt;
 use std::iter::{FromIterator, Filter};
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 use regex::Regex;
 
 use html::Html;
+use parser::base::{DecodeResult, XmlElement};
+use schema::FromSchemaReader;
 
 /// Link element defined in RFC 4287 (section 4.2.7).
 ///
@@ -119,6 +122,26 @@ impl Html for Link {
         write!(f, ">")
     }
 }
+
+impl FromSchemaReader for Link {
+    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                            -> DecodeResult<()>
+    {
+        self.uri = try!(element.get_attr("href")).to_owned();
+        self.relation = element.get_attr("rel")
+                               .unwrap_or("alternate").to_owned();
+        self.mimetype = element.get_attr("type").ok()
+                               .map(ToOwned::to_owned);
+        self.language = element.get_attr("hreflang").ok()
+                               .map(ToOwned::to_owned);
+        self.title = element.get_attr("title").ok()
+                            .map(ToOwned::to_owned);
+        self.byte_size = element.get_attr("length").ok()
+                                .and_then(FromStr::from_str);
+        Ok(())
+    }
+}
+
 
 pub enum Predicate<'a> { Simple(&'a str), Regex(Regex) }
 impl<'a, 'b, 'c> Fn(&'c &'b Link) -> bool for Predicate<'a> {

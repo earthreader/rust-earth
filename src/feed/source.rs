@@ -3,7 +3,12 @@ use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
 
-use super::{Generator, Metadata, Text};
+use parser::base::{DecodeResult, XmlElement, XmlName};
+use schema::FromSchemaReader;
+
+use util::set_default;
+
+use super::{ATOM_XMLNS, Generator, Metadata, Text};
 
 #[derive(Default)]
 pub struct Source {
@@ -34,5 +39,31 @@ impl Source {
 
     pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
         Source::new(id, title, updated_at)
+    }
+}
+
+impl FromSchemaReader for Source {
+    fn match_child<B: Buffer>(&mut self, name: &XmlName,
+                              child: XmlElement<B>) -> DecodeResult<()> {
+        match (name.namespace_as_ref(), &name.local_name[]) {
+            (Some(ATOM_XMLNS), "subtitle") => {
+                *set_default(&mut self.subtitle) =
+                    try!(FromSchemaReader::build_from(child));
+            }
+            (Some(ATOM_XMLNS), "generator") => {
+                *set_default(&mut self.generator) =
+                    try!(FromSchemaReader::build_from(child));
+            }
+            (Some(ATOM_XMLNS), "logo") => {
+                *set_default(&mut self.logo) =
+                    try!(child.read_whole_text());
+            }
+            (Some(ATOM_XMLNS), "icon") => {
+                *set_default(&mut self.icon) =
+                    try!(child.read_whole_text());
+            }
+            _ => { return self.metadata.match_child(name, child); }
+        }
+        Ok(())
     }
 }

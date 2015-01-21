@@ -5,6 +5,10 @@ use std::fmt;
 use html::Html;
 use sanitizer::escape;
 
+use parser::base::{DecodeResult, XmlElement};
+use schema::FromSchemaReader;
+
+
 /// Identify the agent used to generate a feed, for debugging and other
 /// purposes.  It's corresponds to ``atom:generator`` element of
 /// :rfc:`4287#section-4.2.4` (section 4.2.4).
@@ -43,6 +47,18 @@ impl Html for Generator {
         Ok(())
     }
 }
+
+impl FromSchemaReader for Generator {
+    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                            -> DecodeResult<()>
+    {
+        self.uri = element.get_attr("uri").ok().map(|v| v.to_string()); // TODO
+        self.version = element.get_attr("version").ok().map(|v| v.to_string());
+        self.value = try!(element.read_whole_text());
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 mod test {

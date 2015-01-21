@@ -11,6 +11,10 @@ use html::{Html};
 use mimetype::MimeType;
 use sanitizer::{clean_html, escape, sanitize_html};
 
+use parser::base::{DecodeResult, DecodeError, XmlElement};
+use schema::FromSchemaReader;
+
+
 /// Text construct defined in :rfc:`4287#section-3.1` (section 3.1).
 ///
 /// RFC: <https://tools.ietf.org/html/rfc4287#section-3.1>
@@ -124,6 +128,26 @@ impl Blob for Text {
         }
     }
 }
+
+impl FromSchemaReader for Text {
+    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
+                            -> DecodeResult<()>
+    {
+        let type_ = match element.get_attr("type") {
+            Ok("text") => "text",
+            Ok("html") => "html",
+            Ok(_type) => {
+                // TODO: should be warned
+                "text"
+            }
+            Err(DecodeError::AttributeNotFound(_)) => "text",
+            Err(e) => { return Err(e); }
+        };
+        *self = Text::new(type_, try!(element.read_whole_text()));
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 mod test {
