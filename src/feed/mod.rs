@@ -5,33 +5,22 @@ use std::ops::{Deref, DerefMut};
 use chrono::{DateTime, FixedOffset};
 use xml;
 
-use schema::{DocumentElement, FromSchemaReader, Mergeable};
-use parser::base::{DecodeResult, XmlElement, XmlName, NestedEventReader};
+use parser::base::NestedEventReader;
 use parser::base::NestedEvent::Nested;
-use self::elemental::schema::parse_datetime;
+use schema::FromSchemaReader;
 
 pub use self::elemental::{TextType, Text, Person, Link, LinkList, Category, Content, Generator, Mark};
 pub use self::elemental::link::LinkIteratorExt;
 
 pub mod elemental;
+pub mod schema;
 
-
-/// The XML namespace name used for Atom (RFC 4287).
-const ATOM_XMLNS: &'static str = "http://www.w3.org/2005/Atom";
-
-/// The XML namespace name used for Earth Reader `Mark` metadata.
-const MARK_XMLNS: &'static str = "http://earthreader.org/mark/";
 
 #[derive(Default)]
 pub struct Feed {
     pub source: Source,
 
     pub entries: Vec<Entry>,
-}
-
-impl DocumentElement for Feed {
-    fn tag() -> &'static str { "feed" }
-    fn xmlns() -> Option<&'static str> { Some(ATOM_XMLNS) }
 }
 
 impl Deref for Feed {
@@ -73,21 +62,6 @@ pub fn read_feed<B: Buffer>(buf: B) -> Feed {
     feed
 }
 
-impl FromSchemaReader for Feed {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match &name.local_name[] {
-            "entry" => {
-                let mut entry: Entry = Default::default();
-                try!(entry.read_from(child));
-                self.entries.push(entry);
-            }
-            _ => { return self.source.match_child(name, child); }
-        }
-        Ok(())
-    }
-}
-
 #[derive(Default)]
 pub struct Entry {
     pub metadata: Metadata,
@@ -98,11 +72,6 @@ pub struct Entry {
     pub source: Option<Source>,
     pub read: Mark,
     pub starred: Mark,
-}
-
-impl DocumentElement for Entry {
-    fn tag() -> &'static str { "entry" }
-    fn xmlns() -> Option<&'static str> { Some(ATOM_XMLNS) }
 }
 
 impl Deref for Entry {
@@ -124,37 +93,6 @@ impl Entry {
 
     pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
         Entry::new(id, title, updated_at)
-    }
-}
-
-impl FromSchemaReader for Entry {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[]) {
-            (Some(ATOM_XMLNS), "published") => {
-                self.published_at = Some(try!(parse_datetime(child)));
-            }
-            (Some(ATOM_XMLNS), "summary") => {
-                *set_default(&mut self.summary) =
-                    try!(FromSchemaReader::build_from(child));
-            }
-            (Some(ATOM_XMLNS), "content") => {
-                *set_default(&mut self.content) =
-                    try!(FromSchemaReader::build_from(child));
-            }
-            (Some(ATOM_XMLNS), "source") => {
-                *set_default(&mut self.source) =
-                    try!(FromSchemaReader::build_from(child));
-            }
-            (Some(MARK_XMLNS), "read") => {
-                self.read = try!(FromSchemaReader::build_from(child));
-            }
-            (Some(MARK_XMLNS), "starred") => {
-                self.starred = try!(FromSchemaReader::build_from(child));
-            }
-            _ => { return self.metadata.match_child(name, child); }
-        }
-        Ok(())
     }
 }
 
@@ -187,32 +125,6 @@ impl Source {
 
     pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
         Source::new(id, title, updated_at)
-    }
-}
-
-impl FromSchemaReader for Source {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[]) {
-            (Some(ATOM_XMLNS), "subtitle") => {
-                *set_default(&mut self.subtitle) =
-                    try!(FromSchemaReader::build_from(child));
-            }
-            (Some(ATOM_XMLNS), "generator") => {
-                *set_default(&mut self.generator) =
-                    try!(FromSchemaReader::build_from(child));
-            }
-            (Some(ATOM_XMLNS), "logo") => {
-                *set_default(&mut self.logo) =
-                    try!(child.read_whole_text());
-            }
-            (Some(ATOM_XMLNS), "icon") => {
-                *set_default(&mut self.icon) =
-                    try!(child.read_whole_text());
-            }
-            _ => { return self.metadata.match_child(name, child); }
-        }
-        Ok(())
     }
 }
 
@@ -257,49 +169,6 @@ impl Default for Metadata {
     }
 }
 
-impl FromSchemaReader for Metadata {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[]) {
-            (Some(ATOM_XMLNS), "id") => {
-                self.id = try!(child.read_whole_text());
-            }
-            (Some(ATOM_XMLNS), "title") => {
-                try!(self.title.read_from(child));
-            }
-            (Some(ATOM_XMLNS), "link") => {
-                self.links.push(try!(FromSchemaReader::build_from(child)));
-            }
-            (Some(ATOM_XMLNS), "updated") => {
-                self.updated_at = try!(parse_datetime(child));
-            }
-            (Some(ATOM_XMLNS), "modified") => {
-                self.updated_at = try!(parse_datetime(child));
-            }
-            (Some(ATOM_XMLNS), "author") => {
-                match try!(FromSchemaReader::build_from(child)) {
-                    Some(p) => self.authors.push(p),
-                    None => { }
-                }
-            }
-            (Some(ATOM_XMLNS), "contributor") => {
-                match try!(FromSchemaReader::build_from(child)) {
-                    Some(p) => self.contributors.push(p),
-                    None => { }
-                }
-            }
-            (Some(ATOM_XMLNS), "category") => {
-                self.categories.push(try!(FromSchemaReader::build_from(child)));
-            }
-            (Some(ATOM_XMLNS), "rights") => {
-                *set_default(&mut self.rights) = try!(FromSchemaReader::build_from(child));
-            }
-            _ => { }
-        }
-        Ok(())
-    }
-}
-
 pub fn get_mut_or_set<T, F>(opt: &mut Option<T>, f: F) -> &mut T
     where F: Fn() -> T
 {
@@ -316,14 +185,6 @@ pub fn get_mut_or_set<T, F>(opt: &mut Option<T>, f: F) -> &mut T
 
 pub fn set_default<T: Default>(opt: &mut Option<T>) -> &mut T {
     get_mut_or_set(opt, Default::default)
-}
-
-impl Mergeable for Entry {
-    fn merge_entities(mut self, other: Entry) -> Entry {
-        self.read = self.read.merge_entities(other.read);
-        self.starred = self.starred.merge_entities(other.starred);
-        self
-    }
 }
 
 
