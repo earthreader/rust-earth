@@ -1,9 +1,9 @@
-use std::iter::FromIterator;
-use std::ops::{Deref, DerefMut};
-
 pub use self::text::Text;
 pub use self::person::Person;
-pub use self::link::Link;
+pub use self::link::{Link, LinkIteratorExt, LinkList};
+pub use self::category::Category;
+pub use self::content::Content;
+pub use self::generator::Generator;
 pub use self::mark::Mark;
 
 
@@ -120,6 +120,55 @@ pub mod text {
             write!(f, "{}", self.sanitized_html(None))
         }
     }
+
+    #[cfg(test)]
+    mod test {
+        use super::Text;
+
+        #[ignore]
+        #[test]
+        fn test_text_str() {
+            assert_eq!(Text::plain("Hello world").to_string(), "Hello world");
+            assert_eq!(Text::plain("<p>Hello <em>world</em></p>").to_string(),
+                       "<p>Hello <em>world</em></p>");
+            assert_eq!(Text::html("Hello world").to_string(), "Hello world");
+            assert_eq!(Text::html("<p>Hello <em>world</em></p>").to_string(),
+                       "Hello world");
+        }
+
+        macro_rules! assert_sanitized {
+            ($text:expr, $expected:expr) => (
+                assert_eq!($text.sanitized_html(None).to_string(), $expected);
+            );
+            ($text:expr, $base_uri:expr, $expected:expr) => (
+                assert_eq!($text.sanitized_html(Some($base_uri)).to_string(), $expected);
+            )
+        }
+
+        #[ignore]
+        #[test]
+        fn test_get_sanitized_html() {
+            let text = Text::plain("Hello world");
+            assert_sanitized!(text, "Hello world");
+            let text = Text::plain("Hello\nworld");
+            assert_sanitized!(text, "Hello<br>\nworld");
+            let text = Text::plain("<p>Hello <em>world</em></p>");
+            assert_sanitized!(text, concat!("&lt;p&gt;Hello &lt;em&gt;",
+                                            "world&lt;/em&gt;&lt;/p&gt;"));
+            let text = Text::html("Hello world");
+            assert_sanitized!(text, "Hello world");
+            let text = Text::html("<p>Hello <em>world</em></p>");
+            assert_sanitized!(text, "<p>Hello <em>world</em></p>");
+            let text = Text::html("<p>Hello</p><script>alert(1);</script>");
+            assert_sanitized!(text, "<p>Hello</p>");
+            let text = Text::html("<p>Hello</p><hr noshade>");
+            assert_sanitized!(text, "<p>Hello</p><hr noshade>");
+            let text = Text::html("<a href=\"/abspath\">abspath</a>");
+            assert_sanitized!(text, "http://localhost/path/",
+                              concat!("<a href=\"http://localhost/abspath\">",
+                                      "abspath</a>"));
+        }
+    }
 }
 
 
@@ -199,6 +248,8 @@ pub mod person {
     mod test {
         use super::{Person};
 
+        use html::{HtmlExt};
+
         #[test]
         fn test_person_str() {
             assert_eq!(Person { name: "Hong Minhee".to_string(),
@@ -221,6 +272,27 @@ pub mod person {
                            email: Some(email.to_string()),
                        }.to_string());
         }
+
+        #[ignore]
+        #[test]
+        fn test_person_html() {
+            assert_html!(Person::new("Hong \"Test\" Minhee"),
+                         "Hong &quot;Test&quot; Minhee");
+            assert_html!(Person { name: "Hong Minhee".to_string(),
+                                  uri: Some("http://dahlia.kr/".to_string()),
+                                  email: None },
+                         "<a href=\"http://dahlia.kr/\">Hong Minhee</a>");
+            let email = "\x6d\x69\x6e\x68\x65\x65\x40\x64\x61\x68\x6c\x69\x61\x2e\x6b\x72";
+            assert_html!(Person { name: "Hong Minhee".to_string(),
+                                  uri: None,
+                                  email: Some(email.to_string()) },
+                         format!("<a href=\"mailto:{}\">Hong Minhee</a>",
+                                 email));
+            assert_html!(Person { name: "홍민희".to_string(),
+                                  uri: Some("http://dahlia.kr/".to_string()),
+                                  email: Some(email.to_string()) },
+                         "<a href=\"http://dahlia.kr/\">홍민희</a>");
+        }
     }
 }
 
@@ -229,8 +301,8 @@ pub mod link {
     use std::borrow::ToOwned;
     use std::default::Default;
     use std::fmt;
-    use std::iter::Filter;
-    use std::ops::Deref;
+    use std::iter::{FromIterator, Filter};
+    use std::ops::{Deref, DerefMut};
 
     use regex::Regex;
 
@@ -240,7 +312,7 @@ pub mod link {
     ///
     /// RFC: <https://tools.ietf.org/html/rfc4287#section-4.2.7>.
     #[unstable]
-    #[derive(PartialEq, Eq, Hash, Show)]
+    #[derive(Clone, PartialEq, Eq, Hash, Show)]
     pub struct Link {
         /// The link's required URI.  It corresponds to `href` attribute of
         /// [RFC 4287 (section 4.2.7.1)][rfc-link-1].
@@ -384,10 +456,10 @@ pub mod link {
             use regex;
             if pattern.contains_char('*') {
                 let mut regex_str = "^".to_string();
-                let mut first = false;
+                let mut first = true;
                 for part in pattern.split('*') {
                     if first {
-                        first = true
+                        first = false
                     } else {
                         regex_str.push_str(".+?")
                     }
@@ -402,18 +474,16 @@ pub mod link {
             }
         }
 
-        /*
         fn permalink(self) -> Option<&'a Link> {
             self.filter_map(|link| {
                 let rel_is_alternate = link.relation == "alternate";
-                if link.html.is_some() || rel_is_alternate {
-                    Some((link, (link.html.as_ref(), rel_is_alternate)))
+                if link.is_html() || rel_is_alternate {
+                    Some((link, (link.is_html(), rel_is_alternate)))
                 } else {
                     None
                 }
             }).max_by(|pair| pair.1).map(|pair| pair.0)
         }
-        */
 
         fn favicon(mut self) -> Option<&'a Link> {
             for link in self {
@@ -426,51 +496,480 @@ pub mod link {
     }
 
     impl<'a, I: Iterator<Item=&'a Link>> LinkIteratorExt<'a> for I { }
-}
 
-#[derive(Default)]
-pub struct LinkList(pub Vec<Link>);
+    
+    #[derive(Default, Show)]
+    pub struct LinkList(pub Vec<Link>);
 
-impl Deref for LinkList {
-    type Target = Vec<Link>;
-    fn deref(&self) -> &Vec<Link> { &self.0 }
-}
+    impl LinkList {
+        pub fn new() -> LinkList { LinkList(Vec::new()) }
+    }
 
-impl DerefMut for LinkList {
-    fn deref_mut(&mut self) -> &mut Vec<Link> { &mut self.0 }
-}
+    impl Deref for LinkList {
+        type Target = Vec<Link>;
+        fn deref(&self) -> &Vec<Link> { &self.0 }
+    }
 
-impl FromIterator<Link> for LinkList {
-    fn from_iter<T: Iterator<Item=Link>>(iterator: T) -> Self {
-        LinkList(FromIterator::from_iter(iterator))
+    impl DerefMut for LinkList {
+        fn deref_mut(&mut self) -> &mut Vec<Link> { &mut self.0 }
+    }
+
+    impl FromIterator<Link> for LinkList {
+        fn from_iter<T: Iterator<Item=Link>>(iterator: T) -> Self {
+            LinkList(FromIterator::from_iter(iterator))
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::{Link, LinkIteratorExt, LinkList};
+
+        use std::default::Default;
+
+        use html::HtmlExt;
+
+        #[test]
+        fn test_link_html_property() {
+            let mut link = Link::new("http://dahlia.kr/");
+            link.mimetype = Some("text/html".to_string());
+            assert!(link.is_html());
+            link.mimetype = Some("application/xhtml+xml".to_string());
+            assert!(link.is_html());
+            link.mimetype = Some("application/xml".to_string());
+            assert!(!link.is_html());
+        }
+
+        #[test]
+        fn test_link_str() {
+            let link = Link {
+                uri: "http://dahlia.kr/".to_string(),
+                relation: "alternate".to_string(),
+                mimetype: Some("text/html".to_string()),
+                title: Some("Hong Minhee's website".to_string()),
+                language: None, byte_size: None,
+            };
+            assert_eq!(link.to_string(), "http://dahlia.kr/");
+        }
+
+        #[test]
+        fn test_link_html_method() {
+            let link = Link::new("http://dahlia.kr/");
+            assert_html!(link,
+                         "<link rel=\"alternate\" href=\"http://dahlia.kr/\">");
+            let link = Link {
+                uri: "http://dahlia.kr/".to_string(),
+                relation: "alternate".to_string(),
+                mimetype: Some("text/html".to_string()),
+                title: Some("Hong Minhee's website".to_string()),
+                language: Some("en".to_string()),
+                byte_size: None
+            };
+            assert_html!(link,
+                         concat!("<link rel=\"alternate\" type=\"text/html\" ",
+                                 "hreflang=\"en\" href=\"http://dahlia.kr/\" ",
+                                 "title=\"Hong Minhee\'s website\">"));
+        }
+
+        fn fx_feed_links() -> LinkList {
+            LinkList(vec![
+                Link::new("http://example.org/"),
+                Link {
+                    relation: "alternate".to_string(),
+                    mimetype: Some("text/html".to_string()),
+                    uri: "http://example.com/index.html".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "alternate".to_string(),
+                    mimetype: Some("text/html".to_string()),
+                    uri: "http://example.com/index2.html".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "alternate".to_string(),
+                    mimetype: Some("text/xml".to_string()),
+                    uri: "http://example.com/index.xml".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "alternate".to_string(),
+                    mimetype: Some("application/json".to_string()),
+                    uri: "http://example.com/index.json".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "alternate".to_string(),
+                    mimetype: Some("text/javascript".to_string()),
+                    uri: "http://example.com/index.js".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "alternate".to_string(),
+                    mimetype: Some("application/xml+atom".to_string()),
+                    uri: "http://example.com/index.atom".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "alternate".to_string(),  // remove it if available
+                    mimetype: Some("application/xml+rss".to_string()),
+                    uri: "http://example.com/index.atom".to_string(),
+                    title: None, language: None, byte_size: None,
+                },
+                Link {
+                    relation: "icon".to_string(),
+                    mimetype: Some("image/png".to_string()),
+                    uri: "http://example.com/favicon.png".to_string(),
+                    title: None, language: None, byte_size: None,
+                }
+            ])
+        }
+
+        #[test]
+        fn test_link_list_filter_by_mimetype() {
+            let links = fx_feed_links();
+            let result: Vec<_> = links.iter()
+                .filter_by_mimetype("text/html")
+                .collect();
+            assert_eq!(result.len(), 2);
+            assert_eq!(result.iter()
+                             .map(|link| &link.mimetype.as_ref().unwrap()[])
+                             .collect::<Vec<_>>(),
+                       ["text/html", "text/html"]);
+            let result: Vec<_> = links.iter()
+                .filter_by_mimetype("application/*")
+                .collect();
+            assert_eq!(result.len(), 3);
+            assert_eq!(result.iter()
+                             .map(|link| &link.mimetype.as_ref().unwrap()[])
+                             .collect::<Vec<_>>(),
+                       ["application/json",
+                        "application/xml+atom",
+                        "application/xml+rss"]);
+        }
+
+        #[test]
+        fn test_link_list_permalink() {
+            let mut links = fx_feed_links();
+            let mut other_link = Link::new("http://example.com/");
+            other_link.relation = "other".to_string();
+            let mut html_link = Link::new("http://example.com/");
+            html_link.relation = "other".to_string();
+            html_link.mimetype = Some("text/html".to_string());
+            links.extend(vec![other_link, html_link.clone()].into_iter());
+            assert_eq!(links.iter().permalink(), Some(&links[1]));
+            links.remove(1);
+            links.remove(1);
+            assert_eq!(links.iter().permalink(), Some(&html_link));
+            links.pop();
+            assert_eq!(links.iter().permalink(), Some(&links[0]));
+            assert_eq!(links[links.len() - 1..].iter().permalink(), None);
+        }
+
+        #[test]
+        fn test_link_list_favicon() {
+            let mut links = fx_feed_links();
+            assert_eq!(links.iter().favicon(), links.last());
+            links[0] = Link {
+                relation: "shortcut icon".to_string(),
+                uri: "http://example.com/favicon.ico".to_string(),
+                ..Default::default()
+            };
+            assert_eq!(links.iter().favicon(), links.first());
+        }
     }
 }
 
-#[derive(Default)]
-pub struct Category {
-    pub term: String,
-    pub scheme_uri: Option<String>,
-    pub label: Option<String>,
-}
-
-#[derive(Default)]
-pub struct Content {
-    pub text: Text,
-
-    pub source_uri: Option<String>,
-}
-
-#[derive(Default)]
-pub struct Generator {
-    pub uri: Option<String>,
-    pub version: Option<String>,
-    pub value: String,
-}
-
-
-pub mod mark {
+#[unstable]
+pub mod category {
     use std::fmt;
 
+    use schema::Mergeable;
+
+    /// Category element defined in :rfc:`4287#section-4.2.2` (section 4.2.2).
+    #[derive(Default, Show)]
+    pub struct Category {
+        /// The required machine-readable identifier string of the cateogry.
+        /// It corresponds to ``term`` attribute of :rfc:`4287#section-4.2.2.1` (section 4.2.2.1).
+        pub term: String,
+
+        /// The URI that identifies a categorization scheme.  It corresponds to
+        /// ``scheme`` attribute of :rfc:`4287#section-4.2.2.2` (section 4.2.2.2).
+        ///
+        /// ### See also
+        ///
+        /// * [Tag Scheme?][scheme-1] by Tim Bray
+        /// * [Representing tags in Atom][scheme-2] by Edward O'Connor
+        ///
+        /// [scheme-1]: http://www.tbray.org/ongoing/When/200x/2007/02/01/Tag-Scheme
+        /// [scheme-2]: http://edward.oconnor.cx/2007/02/representing-tags-in-atom
+        pub scheme_uri: Option<String>,
+
+        /// The optional human-readable label for display in end-user
+        /// applications.  It corresponds to ``label`` attribute of :rfc:`4287#section-4.2.2.3` (section 4.2.2.3).
+        pub label: Option<String>,
+    }
+
+    impl Category {
+        #[experimental = "should be exposed as a trait"]
+        fn __entity_id__(&self) -> &str { &self.term[] }
+    }
+
+    impl Mergeable for Category {
+        fn merge_entities(mut self, other: Category) -> Category {
+            if self.label.is_none() {
+                self.label = other.label
+            }
+            self
+        }
+    }
+
+    impl fmt::String for Category {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.label.as_ref().unwrap_or(&self.term))
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::Category;
+
+        use std::default::Default;
+
+        fn test_category_str() {
+            assert_eq!(Category { term: "python".to_string(),
+                                  ..Default::default() }.to_string(),
+                       "python");
+            assert_eq!(Category { term: "python".to_string(),
+                                  label: Some("Python".to_string()),
+                                  ..Default::default() }.to_string(),
+                       "Python");
+        }
+    }
+}
+
+#[unstable]
+pub mod content {
+    use super::Text;
+
+    use std::borrow::ToOwned;
+    use std::ops::Deref;
+
+    use regex;
+
+    #[derive(PartialEq, Eq, Show)]
+    pub enum MimeType {
+        Text,
+        Html,
+        Xhtml,
+        Other(String),
+    }
+
+    static MIMETYPE_PATTERN: regex::Regex = regex!(concat!(
+        r#"^"#,
+        r#"(?P<type>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
+        r#"/"#,
+        r#"(?P<subtype>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
+        r#"$"#));
+
+    impl MimeType {
+        pub fn from_str(mimetype: &str) -> Option<MimeType> {
+            let captures = MIMETYPE_PATTERN.captures(mimetype);
+            if let Some(captures) = captures {
+                Some(match (captures.name("type"), captures.name("subtype")) {
+                    (Some("text"), Some("plain")) => MimeType::Text,
+                    (Some("text"), Some("html")) => MimeType::Html,
+                    _ => MimeType::Other(mimetype.to_owned()),
+                })
+            } else {
+                None
+            }
+        }
+
+        pub fn mimetype(&self) -> &str {
+            match *self {
+                MimeType::Text => "text/plain",
+                MimeType::Html => "text/html",
+                MimeType::Xhtml => "application/xhtml+xml",
+                MimeType::Other(ref mimetype) => &mimetype[],
+            }
+        }
+    }
+
+    /// Content construct defined in :rfc:`4287#section-4.1.3` (section 4.1.3).
+    #[derive(Default, Show)]
+    pub struct Content {
+        pub text: Text,
+        pub source_uri: Option<String>,
+    }
+
+    impl Content {
+        pub fn new<T, S: ?Sized>(mimetype: &str, text: String,
+                                 source_uri: Option<T>) -> Content
+            where T: Deref<Target=S>, S: ToOwned<String>
+        {
+            Content {
+                text: Text::new(mimetype, text),
+                source_uri: source_uri.map(|e| e.to_owned()),
+            }
+        }
+    }
+
+    impl PartialEq for Content {
+        fn eq(&self, other: &Content) -> bool {
+            if self.source_uri.is_some() {
+                (self.text.type_() == other.text.type_() &&
+                 self.source_uri.as_ref() == other.source_uri.as_ref())
+            } else {
+                self.text == other.text
+            }
+        }
+    }
+
+    #[cfg(nocompile)]
+    mod test {
+        use super::{Content, MimeType};
+
+        #[test]
+        fn test_content_mimetype() {
+            assert_eq!(Content::new("text", "Hello".to_string(),
+                                    None).mimetype(),
+                       "text/plain");
+            assert_eq!(Content::new("html", "Hello".to_string(),
+                                    None).mimetype(),
+                       "text/html");
+            assert_eq!(Content::new("text/xml", "<a>Hello</a>".to_string(),
+                                    None).mimetype(),
+                       "text/xml");
+            assert_eq!(Content::new("text/plain", "Hello".to_string(),
+                                    None).text.type_(),
+                       "text");
+            assert_eq!(Content::new("text/html", "Hello".to_string(),
+                                    None).text.type_(),
+                       "html");
+            assert_eq!(Content::new("text/xml", "<a>Hello</a>".to_string(),
+                                    None).text.type_(),
+                       "text/xml");
+        }
+
+        #[test]
+        fn test_invalid_mimetype() {
+            assert_eq!(MimeType::from_str("invalid/mime/type"), None);
+            assert_eq!(MimeType::from_str("invalidmimetype"), None);
+            assert_eq!(MimeType::from_str("invalid/(mimetype)"), None);
+        }
+    }
+}
+
+#[unstable]
+pub mod generator {
+    use std::fmt;
+
+    use html::Html;
+    use sanitizer::escape;
+
+    /// Identify the agent used to generate a feed, for debugging and other
+    /// purposes.  It's corresponds to ``atom:generator`` element of
+    /// :rfc:`4287#section-4.2.4` (section 4.2.4).
+    #[derive(Default, PartialEq, Eq)]
+    pub struct Generator {
+        /// A URI that represents something relavent to the agent.
+        pub uri: Option<String>,
+        /// The version of the generating agent.
+        pub version: Option<String>,
+        /// The human-readable name for the generating agent.
+        pub value: String,
+    }
+
+    impl fmt::String for Generator {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            try!(write!(f, "{}", self.value));
+            if let Some(ref version) = self.version {
+                try!(write!(f, " {}", version));
+            }
+            Ok(())
+        }
+    }
+
+    impl Html for Generator {
+        fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            if let Some(ref uri) = self.uri {
+                try!(write!(f, "<a href=\"{}\">", escape(&uri[], false)));
+            }
+            try!(write!(f, "{}", escape(&self.value[], false)));
+            if let Some(ref version) = self.version {
+                try!(write!(f, " {}", version));
+            }
+            if let Some(_) = self.uri {
+                try!(write!(f, "</a>"));
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::Generator;
+
+        use html::HtmlExt;
+
+        #[test]
+        fn test_generator_str() {
+            assert_eq!(Generator { value: "Earth Reader".to_string(),
+                                   uri: None, version: None }.to_string(),
+                       "Earth Reader");
+            assert_eq!(
+                Generator {
+                    value: "Earth Reader".to_string(),
+                    uri: Some("http://earthreader.github.io/".to_string()),
+                    version: None
+                }.to_string(),
+                "Earth Reader");
+            assert_eq!(Generator { value: "Earth Reader".to_string(),
+                                   version: Some("1.0".to_string()),
+                                   uri: None }.to_string(),
+                       "Earth Reader 1.0");
+            assert_eq!(
+                Generator {
+                    value: "Earth Reader".to_string(),
+                    version: Some("1.0".to_string()),
+                    uri: Some("http://earthreader.github.io/".to_string())
+                }.to_string(),
+                "Earth Reader 1.0");
+        }
+
+        #[ignore]
+        #[test]
+        fn test_generator_html() {
+            assert_html!(Generator { value: "Earth Reader".to_string(),
+                                     uri: None, version: None },
+                         "Earth Reader");
+            assert_html!(Generator { value: "<escape test>".to_string(),
+                                     uri: None, version: None },
+                         "&lt;escape test&gt;");
+            assert_html!(
+                Generator {
+                    value: "Earth Reader".to_string(),
+                    uri: Some("http://earthreader.github.io/".to_string()),
+                    version: None,
+                },
+                "<a href=\"http://earthreader.github.io/\">Earth Reader</a>");
+            assert_html!(Generator { value: "Earth Reader".to_string(),
+                                     version: Some("1.0".to_string()),
+                                     uri: None },
+                         "Earth Reader 1.0");
+            assert_html!(
+                Generator {
+                    value: "Earth Reader".to_string(),
+                    version: Some("1.0".to_string()),
+                    uri: Some("http://earthreader.github.io/".to_string())
+                },
+                "<a href=\"http://earthreader.github.io/\">Earth Reader 1.0</a>");
+        }
+    }
+}
+
+#[unstable]
+pub mod mark {
     use chrono::{DateTime, FixedOffset};
     
     use schema::{Mergeable};
@@ -481,16 +980,20 @@ pub mod mark {
     /// for Earth Reader.
     ///
     /// [rfc-atom]: https://tools.ietf.org/html/rfc4287
-    #[derive(Default)]
+    #[derive(Default, PartialEq, Eq, Hash, Show)]
     pub struct Mark {
+        /// Whether it's marked or not.
         pub marked: bool,
+
+        /// Updated time.
         pub updated_at: Option<DateTime<FixedOffset>>,
     }
 
-    impl fmt::Show for Mark {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-            write!(fmt, "Mark {{ marked: {:?}, updated_at: {:?} }}", self.marked, self.updated_at)
-        }
+    impl Mark {
+        /// If there are two or more marks that have the same tag name, these
+        /// are all should be merged into one.
+        #[experimental = "should be exposed as a trait"]
+        fn __entity_id__(&self) -> &str { "" }
     }
 
     impl Mergeable for Mark {
@@ -499,6 +1002,29 @@ pub mod mark {
             match self.updated_at.cmp(&other.updated_at) {
                 Less => other,
                 _    => self,
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::Mark;
+
+        use chrono::{Offset, FixedOffset};
+
+        fn fx_mark_true() -> Mark {
+            Mark {
+                marked: true,
+                updated_at: Some(FixedOffset::east(0).ymd(2013, 11, 6)
+                                                     .and_hms(14, 36, 0)),
+            }
+        }
+
+        fn fx_mark_false() -> Mark {
+            Mark {
+                marked: false,
+                updated_at: Some(FixedOffset::east(0).ymd(2013, 11, 6)
+                                                     .and_hms(14, 36, 0)),
             }
         }
     }
