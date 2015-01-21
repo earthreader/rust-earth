@@ -54,8 +54,8 @@ pub trait Blob {
     /// sanitized, and if it's a binary data, this returns base64-encoded
     /// string.
     ///
-    /// ```ignore
-    /// # use earth::feed::Text;
+    /// ```
+    /// # use earth::feed::{Blob, Text};
     /// let text = Text::text("<Hello>");
     /// let html = Text::html("<script>alert(1);</script><p>Hello</p>");
     /// assert_eq!(format!("{}", text.sanitized_html(None)), "&lt;Hello&gt;");

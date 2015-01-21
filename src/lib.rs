@@ -1,15 +1,16 @@
 #![feature(plugin, unboxed_closures, unsafe_destructor)]
 #![allow(unstable)]
 
-#[plugin]
-#[no_link]
-extern crate regex_macros;
+#[plugin] #[no_link] extern crate regex_macros;
+#[plugin] #[no_link] extern crate string_cache_macros;
 
 extern crate serialize;
 extern crate regex;
 extern crate time;
 
 extern crate chrono;
+extern crate html5ever;
+extern crate string_cache;
 extern crate url;
 extern crate xml;
 

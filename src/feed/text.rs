@@ -9,7 +9,8 @@ use std::fmt;
 
 use html::{Html};
 use mimetype::MimeType;
-use sanitizer::{clean_html, escape, sanitize_html};
+use sanitizer;
+use sanitizer::{clean_html, sanitize_html};
 
 use parser::base::{DecodeResult, DecodeError, XmlElement};
 use schema::FromSchemaReader;
@@ -121,8 +122,10 @@ impl Blob for Text {
         Box<fmt::String + 'a>
     {
         match *self {
-            Text::Plain(ref value) =>
-                Box::new(escape(&value[], true)) as Box<fmt::String>,
+            Text::Plain(ref value) => {
+                let s = sanitizer::Escape(&value[], sanitizer::QUOTE_BR);
+                Box::new(s) as Box<fmt::String>
+            }
             Text::Html(ref value) =>
                 Box::new(sanitize_html(&value[], base_uri)) as Box<fmt::String>,
         }
@@ -155,7 +158,6 @@ mod test {
 
     use feed::Blob;
 
-    #[ignore]
     #[test]
     fn test_text_str() {
         assert_eq!(Text::plain("Hello world").to_string(), "Hello world");
@@ -164,6 +166,8 @@ mod test {
         assert_eq!(Text::html("Hello world").to_string(), "Hello world");
         assert_eq!(Text::html("<p>Hello <em>world</em></p>").to_string(),
                    "Hello world");
+        assert_eq!(Text::html("<p>안녕 <em>세상</em>아</p>").to_string(),
+                   "안녕 세상아");
     }
 
     macro_rules! assert_sanitized {
@@ -175,7 +179,6 @@ mod test {
         )
     }
 
-    #[ignore]
     #[test]
     fn test_get_sanitized_html() {
         let text = Text::plain("Hello world");
@@ -185,6 +188,9 @@ mod test {
         let text = Text::plain("<p>Hello <em>world</em></p>");
         assert_sanitized!(text, concat!("&lt;p&gt;Hello &lt;em&gt;",
                                         "world&lt;/em&gt;&lt;/p&gt;"));
+        let text = Text::plain("<p>안녕 <em>세상</em>아</p>");
+        assert_sanitized!(text, concat!("&lt;p&gt;안녕 &lt;em&gt;",
+                                        "세상&lt;/em&gt;아&lt;/p&gt;"));
         let text = Text::html("Hello world");
         assert_sanitized!(text, "Hello world");
         let text = Text::html("<p>Hello <em>world</em></p>");

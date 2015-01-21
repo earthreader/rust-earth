@@ -91,7 +91,6 @@ mod test {
             "Earth Reader 1.0");
     }
 
-    #[ignore]
     #[test]
     fn test_generator_html() {
         assert_html!(Generator { value: "Earth Reader".to_string(),

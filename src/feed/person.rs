@@ -63,12 +63,22 @@ impl fmt::String for Person {
 impl Html for Person {
     fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = escape(&self.name[], true);
-        if let Some(ref r) = self.uri.as_ref().or(self.email.as_ref()) {
-            let scheme = if self.email.is_some() { "mailto" } else { "" };
-            try!(write!(f, "<a href=\"{2}{1}\">{0}</a>",
-                        name, escape(&r[], true), scheme));
-        } else {
-            try!(write!(f, "{}", name));
+        let hyperlink = match (self.uri.as_ref(), self.email.as_ref()) {
+            (Some(uri), _) => {
+                try!(write!(f, "<a href=\"{}\">",
+                            escape(&uri[], true)));
+                true
+            }
+            (None, Some(email)) => {
+                try!(write!(f, "<a href=\"mailto:{}\">",
+                            escape(&email[], true)));
+                true
+            }
+            (None, None) => { false }
+        };
+        try!(write!(f, "{}", name));
+        if hyperlink {
+            try!(write!(f, "</a>"));
         }
         Ok(())
     }
@@ -147,7 +157,6 @@ mod test {
                    }.to_string());
     }
 
-    #[ignore]
     #[test]
     fn test_person_html() {
         assert_html!(Person::new("Hong \"Test\" Minhee"),

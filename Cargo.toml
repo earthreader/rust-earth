@@ -14,3 +14,12 @@ regex_macros = "*"
 time = "*"
 url = "*"
 xml-rs = "*"
+
+[dependencies.html5ever]
+git = "https://github.com/servo/html5ever.git"
+
+[dependencies.string_cache]
+git = "https://github.com/servo/string-cache"
+
+[dependencies.string_cache_macros]
+git = "https://github.com/servo/string-cache"
