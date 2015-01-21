@@ -1,4 +1,4 @@
-#![feature(plugin, unsafe_destructor)]
+#![feature(plugin, unboxed_closures, unsafe_destructor)]
 #![allow(unstable)]
 
 #[plugin]
@@ -17,7 +17,9 @@ pub mod test_utils;
 
 pub mod codecs;
 pub mod feed;
+pub mod html;
 pub mod parser;
 pub mod repository;
+pub mod sanitizer;
 pub mod schema;
 pub mod stage;

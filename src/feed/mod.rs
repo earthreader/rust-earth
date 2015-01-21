@@ -7,6 +7,7 @@ use chrono::{DateTime, FixedOffset, UTC};
 use schema::{Mergeable};
 
 pub use self::elemental::{TextType, Text, Person, Link, LinkList, Category, Content, Generator, Mark};
+pub use self::elemental::link::LinkIteratorExt;
 
 pub mod elemental;
 
