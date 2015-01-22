@@ -4,7 +4,7 @@
 #![allow(unstable)]
 //! # rust-earth
 //!
-//! **Rust-earth** is an alternative library of [libearth][], the shared common
+//! **rust-earth** is an alternative library of [libearth][], the shared common
 //! library for various [Earth Reader][] apps.
 //! Earth Reader try to support many platforms as possible (e.g. [web][],
 //! mobile apps, desktop apps), so there must be a large part of common concepts
