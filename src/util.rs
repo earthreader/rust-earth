@@ -1,3 +1,5 @@
+#![experimental]
+
 use std::default::Default;
 
 pub fn get_mut_or_set<T, F>(opt: &mut Option<T>, f: F) -> &mut T

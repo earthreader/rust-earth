@@ -3,7 +3,10 @@
 use std::fmt;
 
 #[experimental]
-/// # Example
+/// When a value can be semantically expressed as an HTML element, this trait
+/// may be used.
+///
+/// ## Example
 ///
 /// ```
 /// # use earth::feed::Link;

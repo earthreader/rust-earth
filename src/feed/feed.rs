@@ -1,3 +1,5 @@
+#![unstable]
+
 use std::borrow::ToOwned;
 use std::default::Default;
 use std::ops::{Deref, DerefMut};

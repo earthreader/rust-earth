@@ -1,3 +1,5 @@
+#![unstable]
+
 use std::default::Default;
 use std::error::Error;
 
@@ -6,6 +8,7 @@ use parser::base::NestedEvent::Nested;
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
 
+#[deprecated]
 #[derive(Show)]
 pub enum SchemaError {
 //    DescriptorConflict,
@@ -35,16 +38,19 @@ pub trait Codec<T> {
     fn decode(&self, r: &str) -> SchemaResult<T>;
 }
 
+#[experimental]
 pub trait Mergeable {
     fn merge_entities(self, other: Self) -> Self;
 }
 
 /// The root element of the document.
+#[experimental]
 pub trait DocumentElement {
     fn tag() -> &'static str;
     fn xmlns() -> Option<&'static str>;
 }
 
+#[experimental]
 pub trait FromSchemaReader: Default + Sized {
     fn build_from<B: Buffer>(element: XmlElement<B>) -> DecodeResult<Self> {
         let mut result: Self = Default::default();

@@ -1,3 +1,5 @@
+#![unstable]
+
 use std::fmt;
 use std::str::from_utf8;
 
@@ -40,6 +42,7 @@ const ATOM_XMLNS: &'static str = "http://www.w3.org/2005/Atom";
 const MARK_XMLNS: &'static str = "http://earthreader.org/mark/";
 
 
+#[experimental]
 pub trait Blob {
     fn mimetype(&self) -> MimeType;
 
@@ -65,7 +68,7 @@ pub trait Blob {
         Box<fmt::String + 'a>;
 }
 
-pub fn parse_datetime<B: Buffer>(element: XmlElement<B>)
+fn parse_datetime<B: Buffer>(element: XmlElement<B>)
                                  -> DecodeResult<DateTime<FixedOffset>>
 {
     match codecs::RFC3339.decode(&*try!(element.read_whole_text())) {

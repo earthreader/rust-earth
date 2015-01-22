@@ -1,4 +1,5 @@
 #![macro_use]
+#![doc(hidden)]
 
 use std::io::TempDir;
 

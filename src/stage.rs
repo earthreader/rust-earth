@@ -1,3 +1,5 @@
+#![unstable]
+
 pub use self::dirtybuffer::DirtyBuffer;
 
 

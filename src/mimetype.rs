@@ -1,3 +1,5 @@
+#![experimental]
+
 use std::borrow::ToOwned;
 use std::fmt;
 

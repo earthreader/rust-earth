@@ -1,3 +1,5 @@
+#![unstable]
+
 use std::borrow::{IntoCow, ToOwned};
 use std::default::Default;
 use std::str::FromStr;

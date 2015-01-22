@@ -1,4 +1,4 @@
-#![allow(unstable)]
+#![unstable]
 
 use std::error::{Error, FromError};
 use std::io::IoError;
@@ -157,6 +157,7 @@ pub mod utils {
         fn as_bytes(&self) -> &[u8] { (*self).as_bytes() }
     }
 
+    #[experimental = "waiting <https://github.com/rust-lang/rust/pull/21392>"]
     pub struct Names<'a>(Box<Iterator<Item=Vec<u8>> + 'a>);
 
     impl<'a> Names<'a> {

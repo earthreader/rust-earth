@@ -1,3 +1,5 @@
+#![unstable]
+
 use std::default::Default;
 use std::ops::{Deref, DerefMut};
 
