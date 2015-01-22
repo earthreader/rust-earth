@@ -15,10 +15,19 @@ use schema::{DocumentElement, FromSchemaReader};
 use super::{ATOM_XMLNS, Entry, Source, Text};
 
 
+/// Atom feed document, acting as a container for metadata and data associated
+/// with the feed.
+///
+/// It corresponds to ``atom:feed`` element of :rfc:`4287#section-4.1.1`
+/// (section 4.1.1).
 #[derive(Default)]
 pub struct Feed {
     pub source: Source,
 
+    /// The list of `Entry` values that represent an individual entry, acting
+    /// as a container for metadata and data associated with the entry.
+    /// It corresponds to ``atom:entry`` element of :rfc:`4287#section-4.1.2`
+    /// (section 4.1.2).
     pub entries: Vec<Entry>,
 }
 

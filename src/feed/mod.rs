@@ -1,5 +1,15 @@
 #![unstable]
-
+//! Data structures for feeds.
+//!
+//! **rust-earth** internally stores archive data as Atom format, like
+//! [libearth][] does.  It's exactly not a complete set of [RFC 4287][], but a
+//! subset of the most of that.
+//! Since it's not intended for crawling but internal representation, it does
+//! not follow robustness principle or such thing.  It simply treats stored
+//! data are all valid and well-formed.
+//!
+//! [libearth]: https://github.com/earthreader/libearth
+//! [RFC 4287]: https://tools.ietf.org/html/rfc4287
 use std::fmt;
 use std::str::from_utf8;
 

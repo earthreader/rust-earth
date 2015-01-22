@@ -13,15 +13,47 @@ use util::set_default;
 use super::{ATOM_XMLNS, MARK_XMLNS, Content, Mark, Metadata, Source, Text,
             parse_datetime};
 
+/// Represent an individual entry, acting as a container for metadata and data
+/// associated with the entry.  It corresponds to `atom:entry` element of
+/// :rfc:`4287#section-4.1.2` (section 4.1.2).
 #[derive(Default)]
 pub struct Entry {
     pub metadata: Metadata,
 
+    /// The datetime value with a fixed timezone offset, indicating an instant
+    /// in time associated with an event early in the life cycle of the entry.
+    /// Typically, `published_at` will be associated with the initial creation
+    /// or first availability of the resource.
+    /// It corresponds to `atom:published` element of :rfc:`4287#section-4.2.9`
+    /// (section 4.2.9).
     pub published_at: Option<DateTime<FixedOffset>>,
+
+    /// The text field that conveys a short summary, abstract, or excerpt of
+    /// the entry.  It corresponds to ``atom:summary`` element of
+    /// :rfc:`4287#section-4.2.13` (section 4.2.13).
     pub summary: Option<Text>,
+
+    /// It either contains or links to the content of the entry.
+    /// It corresponds to ``atom:content`` element of :rfc:`4287#section-4.1.3`
+    /// (section 4.1.3).
     pub content: Option<Content>,
+
+    /// If an entry is copied from one feed into another feed, then the source
+    /// feed's metadata may be preserved within the copied entry by adding
+    /// `source` if it is not already present in the entry, and including some
+    /// or all of the source feed's metadata as the `source`'s data.
+    ///
+    /// It is designed to allow the aggregation of entries from different feeds
+    /// while retaining information about an entry's source feed.
+    ///
+    /// It corresponds to ``atom:source`` element of :rfc:`4287#section-4.2.10`
+    /// (section 4.2.10).
     pub source: Option<Source>,
+
+    /// Whether and when it's read or unread.
     pub read: Mark,
+
+    /// Whether and when it's starred or unstarred.
     pub starred: Mark,
 }
 

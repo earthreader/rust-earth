@@ -12,13 +12,30 @@ use util::set_default;
 
 use super::{ATOM_XMLNS, Generator, Metadata, Text};
 
+/// All metadata for `Feed` excepting `Feed.entries`.
+/// It corresponds to `atom:source` element of :rfc:`4287#section-4.2.10`
+/// (section 4.2.10).
 #[derive(Default)]
 pub struct Source {
     pub metadata: Metadata,
 
+    /// A text that conveys a human-readable description or subtitle for a
+    /// feed.  It corresponds to `atom:subtitle` element of
+    /// :rfc:`4287#section-4.2.12` (section 4.2.12).
     pub subtitle: Option<Text>,
+
+    /// Identify the agent used to generate a feed, for debugging and other
+    /// purposes.  It corresponds to `atom:generator` element of
+    /// :rfc:`4287#section-4.2.4` (section 4.2.4).
     pub generator: Option<Generator>,
+
+    /// URI that identifies an image that provides visual identification for a
+    /// feed.  It corresponds to `atom:logo` element of :rfc:`4287#section-4.2.8` (section 4.2.8).
     pub logo: Option<String>,
+
+    /// URI that identifies an image that provides iconic visual identification
+    /// for a feed.  It corresponds to `atom:icon` element of
+    /// :rfc:`4287#section-4.2.5` (section 4.2.5).
     pub icon: Option<String>,
 }
 
