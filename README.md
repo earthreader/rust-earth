@@ -1,7 +1,7 @@
 rust-earth
 ==========
 
-**Rust-earth** is an alternative library of [libearth][], the shared common
+**rust-earth** is an alternative library of [libearth][], the shared common
 library for various [Earth Reader][] apps.
 
 [libearth]: https://github.com/earthreader/libearth
@@ -11,22 +11,18 @@ library for various [Earth Reader][] apps.
 Links
 -----
 
-### Documentation
+* Documentation
 
-<http://earthreader.org/rust-earth/nightly/earth/index.html>
+  <http://earthreader.org/rust-earth/nightly/earth/index.html>
 
-### Git repository (GitHub)
+* Git repository (GitHub)
 
-<https://github.com/earthreader/rust-earth>
+  <https://github.com/earthreader/rust-earth>
 
-### Issue tracker (GitHub)
+* Issue tracker (GitHub)  [![Issues](http://img.shields.io/github/issues/earthreader/rust-earth.svg)](https://github.com/earthreader/rust-earth/issues)
 
-<https://github.com/earthreader/rust-earth/issues>
+  <https://github.com/earthreader/rust-earth/issues>
 
-[![Issues](http://img.shields.io/github/issues/earthreader/rust-earth.svg)](https://github.com/earthreader/rust-earth/issues)
+* Continuous integration (Travis)  [![Build Status](https://travis-ci.org/earthreader/rust-earth.svg?branch=master)](https://travis-ci.org/earthreader/rust-earth)
 
-### Continuous integration (Travis)
-
-<https://travis-ci.org/earthreader/rust-earth>
-   
-[![Build Status](https://travis-ci.org/earthreader/rust-earth.svg?branch=master)](https://travis-ci.org/earthreader/rust-earth)
+  <https://travis-ci.org/earthreader/rust-earth>
