@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Link` struct in crate `earth`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Link">
+
+    <title>earth::feed::link::Link - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+
+    <link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        <a href='../../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
+        <p class='location'><a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>feed</a>::<wbr><a href='index.html'>link</a></p><div class='block struct'><h2>Structs</h2><a class='struct current' href='struct.Link.html'>Link</a><a class='struct ' href='struct.LinkList.html'>LinkList</a></div><div class='block enum'><h2>Enums</h2><a class='enum ' href='enum.Predicate.html'>Predicate</a></div><div class='block trait'><h2>Traits</h2><a class='trait ' href='trait.LinkIteratorExt.html'>LinkIteratorExt</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>feed</a>::<wbr><a href='index.html'>link</a>::<wbr><a class='struct' href=''>Link</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-10477' href='../../../src/earth/feed/link.rs.html#21-70'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Link {
+    pub uri: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    pub relation: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    pub mimetype: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;,
+    pub language: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;,
+    pub title: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;,
+    pub byte_size: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a>&gt;,
+}</pre><div class='docblock'><p>Link element defined in RFC 4287 (section 4.2.7).</p>
+
+<p>RFC: <a href="https://tools.ietf.org/html/rfc4287#section-4.2.7">https://tools.ietf.org/html/rfc4287#section-4.2.7</a>.</p>
+</div><h2 class='fields'>Fields</h2>
+<table><tr><td id='structfield.uri'><a class='stability Unstable' title='Unstable'></a><code>uri</code></td><td><div class='docblock'><p>The link&#39;s required URI.  It corresponds to <code>href</code> attribute of
+<a href="https://tools.ietf.org/html/rfc4287#section-4.2.7.1">RFC 4287 (section 4.2.7.1)</a>.</p>
+</div></td></tr><tr><td id='structfield.relation'><a class='stability Unstable' title='Unstable'></a><code>relation</code></td><td><div class='docblock'><p>The relation type of the link.  It corresponds to <code>rel</code> attribute
+of <a href="https://tools.ietf.org/html/rfc4287#section-4.2.7.2">RFC 4287 (section 4.2.7.2)</a>.</p>
+
+<h3 id="see-also" class='section-header'><a
+                           href="#see-also">See also</a></h3>
+<ul>
+<li><p><a href="http://microformats.org/wiki/existing-rel-values">Existing rel values</a> --- Microformats Wiki</p>
+
+<p>This page contains tables of known HTML <code>rel</code> values from
+specifications, formats, proposals, brainstorms, and non-trivial
+<a href="http://microformats.org/wiki/POSH">POSH</a> usage in the wild.  In addition, dropped and rejected
+values are listed at the end for comprehensiveness.</p></li>
+</ul>
+</div></td></tr><tr><td id='structfield.mimetype'><a class='stability Unstable' title='Unstable'></a><code>mimetype</code></td><td><div class='docblock'><p>The optional hint for the MIME media type of the linked content.
+It corresponds to <code>type</code> attribute of
+<a href="https://tools.ietf.org/html/rfc4287#section-4.2.7.3">RFC 4287 (section 4.2.7.3)</a>.</p>
+</div></td></tr><tr><td id='structfield.language'><a class='stability Unstable' title='Unstable'></a><code>language</code></td><td><div class='docblock'><p>The language of the linked content.  It corresponds to <code>hreflang</code>
+attribute of <a href="https://tools.ietf.org/html/rfc4287#section-4.2.7.4">RFC 4287 (section 4.2.7.4)</a>.</p>
+</div></td></tr><tr><td id='structfield.title'><a class='stability Unstable' title='Unstable'></a><code>title</code></td><td><div class='docblock'><p>The title of the linked resource.  It corresponds to <code>title</code>
+attribute of <a href="https://tools.ietf.org/html/rfc4287#section-4.2.7.5">RFC 4287 (section 4.2.7.5)</a>.</p>
+</div></td></tr><tr><td id='structfield.byte_size'><a class='stability Unstable' title='Unstable'></a><code>byte_size</code></td><td><div class='docblock'><p>The optional hint for the length of the linked content in octets.
+It corresponds to <code>length</code> attribute of <a href="https://tools.ietf.org/html/rfc4287#section-4.2.7.6">RFC 4287 (section 4.2.7.6)
+</a>.</p>
+</div></td></tr></table><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unstable' title='Unstable'></a><code>impl <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.new' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.new' class='fnname'>new</a>&lt;T, S: ?<a class='trait' href='http://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a>&gt;(uri: T) -&gt; <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a> <span class='where'>where T: <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.Deref.html' title='core::ops::Deref'>Deref</a>&lt;Target=S&gt;, S: <a class='trait' href='http://doc.rust-lang.org/nightly/core/borrow/trait.ToOwned.html' title='core::borrow::ToOwned'>ToOwned</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;</span></code></h4>
+<h4 id='method.is_html' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.is_html' class='fnname'>is_html</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Whether its <code>mimetype</code> is HTML (or XHTML).</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/default/trait.Default.html' title='core::default::Default'>Default</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.default' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.default' class='fnname'>default</a>() -&gt; <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h4>
+</div><h3 class='impl'><a class='stability Unstable' title='Unstable: I/O and core have yet to be reconciled'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.String.html' title='core::fmt::String'>String</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><a class='stability Unstable' title='Unstable: I/O and core have yet to be reconciled'></a><code>fn <a href='#method.fmt' class='fnname'>fmt</a>(&amp;self, f: &amp;mut <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='http://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div><h3 class='impl'><a class='stability Experimental' title='Experimental'></a><code>impl <a class='trait' href='../../../earth/schema/trait.FromSchemaReader.html' title='earth::schema::FromSchemaReader'>FromSchemaReader</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.read_from' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.read_from' class='fnname'>read_from</a>&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(&amp;mut self, element: <a class='struct' href='../../../earth/parser/base/struct.XmlElement.html' title='earth::parser::base::XmlElement'>XmlElement</a>&lt;B&gt;) -&gt; <a class='type' href='../../../earth/parser/base/type.DecodeResult.html' title='earth::parser::base::DecodeResult'>DecodeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<h4 id='method.build_from' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.build_from' class='fnname'>build_from</a>&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(element: <a class='struct' href='../../../earth/parser/base/struct.XmlElement.html' title='earth::parser::base::XmlElement'>XmlElement</a>&lt;B&gt;) -&gt; <a class='type' href='../../../earth/parser/base/type.DecodeResult.html' title='earth::parser::base::DecodeResult'>DecodeResult</a>&lt;Self&gt;</code></h4>
+<h4 id='method.match_child' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.match_child' class='fnname'>match_child</a>&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(&amp;mut self, _name: &amp;<a class='struct' href='../../../earth/parser/base/struct.XmlName.html' title='earth::parser::base::XmlName'>XmlName</a>, _child: <a class='struct' href='../../../earth/parser/base/struct.XmlElement.html' title='earth::parser::base::XmlElement'>XmlElement</a>&lt;B&gt;) -&gt; <a class='type' href='../../../earth/parser/base/type.DecodeResult.html' title='earth::parser::base::DecodeResult'>DecodeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+</div><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><a class='stability Unstable' title='Unstable: I/O and core have yet to be reconciled'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.Show.html' title='core::fmt::Show'>Show</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><a class='stability Unstable' title='Unstable: I/O and core have yet to be reconciled'></a><code>fn <a href='#method.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='http://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div><h3 class='impl'><a class='stability Unstable' title='Unstable: module was recently redesigned'></a><code>impl&lt;__S: <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Writer.html' title='core::hash::Writer'>Writer</a> + <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html' title='core::hash::Hasher'>Hasher</a>&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/hash/trait.Hash.html' title='core::hash::Hash'>Hash</a>&lt;__S&gt; for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.hash' class='method'><a class='stability Unstable' title='Unstable: module was recently redesigned'></a><code>fn <a href='#method.hash' class='fnname'>hash</a>(&amp;self, __arg_0: &amp;mut __S)</code></h4>
+</div><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.assert_receiver_is_total_eq' class='tymethod'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#tymethod.assert_receiver_is_total_eq' class='fnname'>assert_receiver_is_total_eq</a>(&amp;self)</code></h4>
+</div><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.eq' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.ne' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h3><div class='impl-items'><h4 id='method.clone' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../../../earth/feed/link/struct.Link.html' title='earth::feed::link::Link'>Link</a></code></h4>
+<h4 id='method.clone_from' class='tymethod'><a class='stability Unstable' title='Unstable: this function is rarely used'></a><code>fn <a href='#tymethod.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "earth";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script async src="../../../search-index.js"></script>
+</body>
+</html>

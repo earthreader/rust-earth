@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `FileSystemRepository` struct in crate `earth`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, FileSystemRepository">
+
+    <title>earth::repository::fs::FileSystemRepository - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+
+    <link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        <a href='../../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
+        <p class='location'><a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>repository</a>::<wbr><a href='index.html'>fs</a></p><div class='block struct'><h2>Structs</h2><a class='struct current' href='struct.FileSystemRepository.html'>FileSystemRepository</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>repository</a>::<wbr><a href='index.html'>fs</a>::<wbr><a class='struct' href=''>FileSystemRepository</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-50855' href='../../../src/earth/repository/fs.rs.html#16-18'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct FileSystemRepository {
+    // some fields omitted
+}</pre><div class='docblock'><p>Builtin implementation of <code>Repository</code> trait which uses the ordinary
+file system.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unstable' title='Unstable'></a><code>impl <a class='struct' href='../../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a></code></h3><div class='impl-items'><h4 id='method.from_path' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.from_path' class='fnname'>from_path</a>(path: &amp;<a class='struct' href='http://doc.rust-lang.org/nightly/std/path/windows/struct.Path.html' title='std::path::windows::Path'>Path</a>, mkdir: <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>) -&gt; <a class='type' href='../../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='../../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a>&gt;</code></h4>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><a class='stability Unstable' title='Unstable'></a><code>impl <a class='trait' href='../../../earth/repository/trait.Repository.html' title='earth::repository::Repository'>Repository</a> for <a class='struct' href='../../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a></code></h3><div class='impl-items'><h4 id='method.get_reader' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.get_reader' class='fnname'>get_reader</a>&lt;'a, T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;'a self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a class='type' href='../../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a> + 'a&gt;&gt;</code></h4>
+<h4 id='method.get_writer' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.get_writer' class='fnname'>get_writer</a>&lt;'a, T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;'a mut self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a class='type' href='../../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Writer.html' title='std::io::Writer'>Writer</a> + 'a&gt;&gt;</code></h4>
+<h4 id='method.exists' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.exists' class='fnname'>exists</a>&lt;T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.list' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.list' class='fnname'>list</a>&lt;'a, T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;'a self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a class='type' href='../../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='../../../earth/repository/utils/struct.Names.html' title='earth::repository::utils::Names'>Names</a>&lt;'a&gt;&gt;</code></h4>
+<h4 id='method.read' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.read' class='fnname'>read</a>&lt;T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a class='type' href='../../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;&gt;</code></h4>
+<h4 id='method.write' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.write' class='fnname'>write</a>&lt;T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>, U: <a class='trait' href='../../../earth/repository/utils/trait.Bytes.html' title='earth::repository::utils::Bytes'>Bytes</a>&gt;(&amp;mut self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>, buf: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[U]</a>) -&gt; <a class='type' href='../../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "earth";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script async src="../../../search-index.js"></script>
+</body>
+</html>

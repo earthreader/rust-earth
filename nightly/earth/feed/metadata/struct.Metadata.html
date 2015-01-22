@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Metadata` struct in crate `earth`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Metadata">
+
+    <title>earth::feed::metadata::Metadata - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+
+    <link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        <a href='../../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
+        <p class='location'><a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>feed</a>::<wbr><a href='index.html'>metadata</a></p><div class='block struct'><h2>Structs</h2><a class='struct current' href='struct.Metadata.html'>Metadata</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>feed</a>::<wbr><a href='index.html'>metadata</a>::<wbr><a class='struct' href=''>Metadata</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-14518' href='../../../src/earth/feed/metadata.rs.html#14-53'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Metadata {
+    pub id: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    pub title: <a class='enum' href='../../../earth/feed/text/enum.Text.html' title='earth::feed::text::Text'>Text</a>,
+    pub links: <a class='struct' href='../../../earth/feed/link/struct.LinkList.html' title='earth::feed::link::LinkList'>LinkList</a>,
+    pub updated_at: <a class='struct' href='https://lifthrasiir.github.io/rust-chrono/chrono/datetime/struct.DateTime.html' title='chrono::datetime::DateTime'>DateTime</a>&lt;<a class='struct' href='https://lifthrasiir.github.io/rust-chrono/chrono/offset/struct.FixedOffset.html' title='chrono::offset::FixedOffset'>FixedOffset</a>&gt;,
+    pub authors: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../../earth/feed/person/struct.Person.html' title='earth::feed::person::Person'>Person</a>&gt;,
+    pub contributors: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../../earth/feed/person/struct.Person.html' title='earth::feed::person::Person'>Person</a>&gt;,
+    pub categories: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../../earth/feed/category/struct.Category.html' title='earth::feed::category::Category'>Category</a>&gt;,
+    pub rights: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='enum' href='../../../earth/feed/text/enum.Text.html' title='earth::feed::text::Text'>Text</a>&gt;,
+}</pre><div class='docblock'><p>Common metadata shared by <code>Source</code>, <code>Entry</code>, and <code>Feed</code>.</p>
+</div><h2 class='fields'>Fields</h2>
+<table><tr><td id='structfield.id'><a class='stability Unstable' title='Unstable'></a><code>id</code></td><td><div class='docblock'><p>The URI that conveys a permanent, universally unique identifier for an
+entry or feed.  It corresponds to <code>atom:id</code> element of :rfc:<code>4287#section-4.2.6</code> (section 4.2.6).</p>
+</div></td></tr><tr><td id='structfield.title'><a class='stability Unstable' title='Unstable'></a><code>title</code></td><td><div class='docblock'><p>The human-readable title for an entry or feed.
+It corresponds to <code>atom:title</code> element of :rfc:<code>4287#section-4.2.14</code> (section 4.2.14).</p>
+</div></td></tr><tr><td id='structfield.links'><a class='stability Unstable' title='Unstable'></a><code>links</code></td><td><div class='docblock'><p>The list of :class:<code>Link</code> objects that define a reference from an entry
+or feed to a web resource.  It corresponds to <code>atom:link</code> element of
+:rfc:<code>4287#section-4.2.7</code> (section 4.2.7).</p>
+</div></td></tr><tr><td id='structfield.updated_at'><a class='stability Unstable' title='Unstable'></a><code>updated_at</code></td><td><div class='docblock'><p>The datetime value with a fixed timezone offset, indicating the most
+recent instant in time when the entry was modified in a way the
+publisher considers significant.  Therefore, not all modifications
+necessarily result in a changed <code>updated_at</code> value.
+It corresponds to <code>atom:updated</code> element of :rfc:<code>4287#section-4.2.15</code> (section 4.2.15).</p>
+</div></td></tr><tr><td id='structfield.authors'><a class='stability Unstable' title='Unstable'></a><code>authors</code></td><td><div class='docblock'><p>The list of <code>Person</code> values which indicates the author of the entry or
+feed.  It corresponds to <code>atom:author</code> element of :rfc:<code>4287#section-4.2.1</code> (section 4.2.1).</p>
+</div></td></tr><tr><td id='structfield.contributors'><a class='stability Unstable' title='Unstable'></a><code>contributors</code></td><td><div class='docblock'><p>The list of <code>Person</code> values which indicates a person or other entity
+who contributed to the entry or feed.  It corresponds to
+<code>atom:contributor</code> element of :rfc:<code>4287#section-4.2.3</code> (section 4.2.3).</p>
+</div></td></tr><tr><td id='structfield.categories'><a class='stability Unstable' title='Unstable'></a><code>categories</code></td><td><div class='docblock'><p>The list of <code>Category</code> values that conveys information about categories
+associated with an entry or feed.  It corresponds to <code>atom:category</code>
+element of :rfc:<code>4287#section-4.2.2</code> (section 4.2.2).</p>
+</div></td></tr><tr><td id='structfield.rights'><a class='stability Unstable' title='Unstable'></a><code>rights</code></td><td><div class='docblock'><p>The text field that conveys information about rights held in and of an
+entry or feed.  It corresponds to <code>atom:rights</code> element of
+:rfc:<code>4287#section-4.2.10</code> (section 4.2.10).</p>
+</div></td></tr></table><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unstable' title='Unstable'></a><code>impl <a class='struct' href='../../../earth/feed/metadata/struct.Metadata.html' title='earth::feed::metadata::Metadata'>Metadata</a></code></h3><div class='impl-items'><h4 id='method.new_inherited' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.new_inherited' class='fnname'>new_inherited</a>(id: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>, title: <a class='enum' href='../../../earth/feed/text/enum.Text.html' title='earth::feed::text::Text'>Text</a>, updated_at: <a class='struct' href='https://lifthrasiir.github.io/rust-chrono/chrono/datetime/struct.DateTime.html' title='chrono::datetime::DateTime'>DateTime</a>&lt;<a class='struct' href='https://lifthrasiir.github.io/rust-chrono/chrono/offset/struct.FixedOffset.html' title='chrono::offset::FixedOffset'>FixedOffset</a>&gt;) -&gt; <a class='struct' href='../../../earth/feed/metadata/struct.Metadata.html' title='earth::feed::metadata::Metadata'>Metadata</a></code></h4>
+</div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/default/trait.Default.html' title='core::default::Default'>Default</a> for <a class='struct' href='../../../earth/feed/metadata/struct.Metadata.html' title='earth::feed::metadata::Metadata'>Metadata</a></code></h3><div class='impl-items'><h4 id='method.default' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.default' class='fnname'>default</a>() -&gt; <a class='struct' href='../../../earth/feed/metadata/struct.Metadata.html' title='earth::feed::metadata::Metadata'>Metadata</a></code></h4>
+</div><h3 class='impl'><a class='stability Experimental' title='Experimental'></a><code>impl <a class='trait' href='../../../earth/schema/trait.FromSchemaReader.html' title='earth::schema::FromSchemaReader'>FromSchemaReader</a> for <a class='struct' href='../../../earth/feed/metadata/struct.Metadata.html' title='earth::feed::metadata::Metadata'>Metadata</a></code></h3><div class='impl-items'><h4 id='method.match_child' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.match_child' class='fnname'>match_child</a>&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(&amp;mut self, name: &amp;<a class='struct' href='../../../earth/parser/base/struct.XmlName.html' title='earth::parser::base::XmlName'>XmlName</a>, child: <a class='struct' href='../../../earth/parser/base/struct.XmlElement.html' title='earth::parser::base::XmlElement'>XmlElement</a>&lt;B&gt;) -&gt; <a class='type' href='../../../earth/parser/base/type.DecodeResult.html' title='earth::parser::base::DecodeResult'>DecodeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<h4 id='method.build_from' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.build_from' class='fnname'>build_from</a>&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(element: <a class='struct' href='../../../earth/parser/base/struct.XmlElement.html' title='earth::parser::base::XmlElement'>XmlElement</a>&lt;B&gt;) -&gt; <a class='type' href='../../../earth/parser/base/type.DecodeResult.html' title='earth::parser::base::DecodeResult'>DecodeResult</a>&lt;Self&gt;</code></h4>
+<h4 id='method.read_from' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.read_from' class='fnname'>read_from</a>&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(&amp;mut self, element: <a class='struct' href='../../../earth/parser/base/struct.XmlElement.html' title='earth::parser::base::XmlElement'>XmlElement</a>&lt;B&gt;) -&gt; <a class='type' href='../../../earth/parser/base/type.DecodeResult.html' title='earth::parser::base::DecodeResult'>DecodeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "earth";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script async src="../../../search-index.js"></script>
+</body>
+</html>

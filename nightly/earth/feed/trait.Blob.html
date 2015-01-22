@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Blob` trait in crate `earth`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Blob">
+
+    <title>earth::feed::Blob - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+
+    <link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
+        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>feed</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='category/index.html'>category</a><a class='mod ' href='content/index.html'>content</a><a class='mod ' href='entry/index.html'>entry</a><a class='mod ' href='feed/index.html'>feed</a><a class='mod ' href='generator/index.html'>generator</a><a class='mod ' href='link/index.html'>link</a><a class='mod ' href='mark/index.html'>mark</a><a class='mod ' href='metadata/index.html'>metadata</a><a class='mod ' href='person/index.html'>person</a><a class='mod ' href='source/index.html'>source</a><a class='mod ' href='text/index.html'>text</a></div><div class='block trait'><h2>Traits</h2><a class='trait current' href='trait.Blob.html'>Blob</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content trait">
+<h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>earth</a>::<wbr><a href='index.html'>feed</a>::<wbr><a class='trait' href=''>Blob</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-17131' href='../../src/earth/feed/mod.rs.html#56-79'>[src]</a></span></h1>
+<pre class='rust trait'>pub trait Blob {
+    fn <a href='#tymethod.mimetype' class='fnname'>mimetype</a>(&amp;self) -&gt; <a class='enum' href='../../earth/mimetype/enum.MimeType.html' title='earth::mimetype::MimeType'>MimeType</a>;
+    fn <a href='#tymethod.as_bytes' class='fnname'>as_bytes</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a href='http://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>;
+    fn <a href='#tymethod.sanitized_html' class='fnname'>sanitized_html</a>&lt;'a&gt;(&amp;'a self, base_uri: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;) -&gt; <a class='struct' href='http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.String.html' title='core::fmt::String'>String</a> + 'a&gt;;
+
+    fn <a href='#method.is_text' class='fnname'>is_text</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a> { ... }
+    fn <a href='#method.as_str' class='fnname'>as_str</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt; { ... }
+}</pre>
+            <h2 id='required-methods'>Required Methods</h2>
+            <div class='methods'>
+        <h3 id='tymethod.mimetype' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#tymethod.mimetype' class='fnname'>mimetype</a>(&amp;self) -&gt; <a class='enum' href='../../earth/mimetype/enum.MimeType.html' title='earth::mimetype::MimeType'>MimeType</a></code></h3><h3 id='tymethod.as_bytes' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#tymethod.as_bytes' class='fnname'>as_bytes</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a href='http://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a></code></h3><h3 id='tymethod.sanitized_html' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#tymethod.sanitized_html' class='fnname'>sanitized_html</a>&lt;'a&gt;(&amp;'a self, base_uri: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;) -&gt; <a class='struct' href='http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.String.html' title='core::fmt::String'>String</a> + 'a&gt;</code></h3><div class='docblock'><p>Get the secure HTML string of the text.  If it&#39;s a plain text, this
+returns entity-escaped HTML string, if it&#39;s a HTML text, <code>value</code> is
+sanitized, and if it&#39;s a binary data, this returns base64-encoded
+string.</p>
+<pre id='rust-example-rendered' class='rust '>
+<span class='kw'>let</span> <span class='ident'>text</span> <span class='op'>=</span> <span class='ident'>Text</span>::<span class='ident'>text</span>(<span class='string'>&quot;&lt;Hello&gt;&quot;</span>);
+<span class='kw'>let</span> <span class='ident'>html</span> <span class='op'>=</span> <span class='ident'>Text</span>::<span class='ident'>html</span>(<span class='string'>&quot;&lt;script&gt;alert(1);&lt;/script&gt;&lt;p&gt;Hello&lt;/p&gt;&quot;</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>text</span>.<span class='ident'>sanitized_html</span>(<span class='prelude-val'>None</span>)), <span class='string'>&quot;&amp;lt;Hello&amp;gt;&quot;</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>html</span>.<span class='ident'>sanitized_html</span>(<span class='prelude-val'>None</span>)), <span class='string'>&quot;&lt;p&gt;Hello&lt;/p&gt;&quot;</span>);
+</pre>
+</div></div>
+            <h2 id='provided-methods'>Provided Methods</h2>
+            <div class='methods'>
+        <h3 id='method.is_text' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.is_text' class='fnname'>is_text</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h3><h3 id='method.as_str' class='method'><a class='stability Experimental' title='Experimental'></a><code>fn <a href='#method.as_str' class='fnname'>as_str</a>(&amp;self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h3></div>
+        <h2 id='implementors'>Implementors</h2>
+        <ul class='item-list' id='implementors-list'>
+    <li><a class='stability Experimental' title='Experimental'></a><code>impl <a class='trait' href='../../earth/feed/trait.Blob.html' title='earth::feed::Blob'>Blob</a> for <a class='struct' href='../../earth/feed/content/struct.Content.html' title='earth::feed::content::Content'>Content</a></code></li>
+<li><a class='stability Experimental' title='Experimental'></a><code>impl <a class='trait' href='../../earth/feed/trait.Blob.html' title='earth::feed::Blob'>Blob</a> for <a class='enum' href='../../earth/feed/text/enum.Text.html' title='earth::feed::text::Text'>Text</a></code></li>
+</ul><script type="text/javascript" async
+                              src="../../implementors/earth/feed/trait.Blob.js">
+                      </script></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "earth";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script async src="../../search-index.js"></script>
+</body>
+</html>
