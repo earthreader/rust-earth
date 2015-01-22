@@ -11,7 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../main.css">
 
-    <link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+    <link rel="shortcut icon" href="http://earthreader.org/favicon.ico">
     
 </head>
 <body class="rustdoc">
@@ -44,7 +44,7 @@
 <h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>earth</a>::<wbr><a href='index.html'>repository</a>::<wbr><a class='trait' href=''>Repository</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-51807' href='../../src/earth/repository/mod.rs.html#91-120'>[src]</a></span></h1>
+        </span><a id='src-51807' href='../../src/earth/repository/mod.rs.html#100-129'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait Repository {
     fn <a href='#tymethod.get_reader' class='fnname'>get_reader</a>&lt;'a, T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;'a self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a class='type' href='../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a> + 'a&gt;&gt;;
     fn <a href='#tymethod.get_writer' class='fnname'>get_writer</a>&lt;'a, T: <a class='trait' href='http://doc.rust-lang.org/nightly/std/path/trait.BytesContainer.html' title='std::path::BytesContainer'>BytesContainer</a>&gt;(&amp;'a mut self, key: <a href='http://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[T]</a>) -&gt; <a class='type' href='../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html' title='alloc::boxed::Box'>Box</a>&lt;<a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Writer.html' title='std::io::Writer'>Writer</a> + 'a&gt;&gt;;

@@ -11,7 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../main.css">
 
-    <link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+    <link rel="shortcut icon" href="http://earthreader.org/favicon.ico">
     
 </head>
 <body class="rustdoc">
@@ -44,8 +44,15 @@
 <h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>earth</a>::<wbr><a class='mod' href=''>repository</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-50821' href='../../src/earth/repository/mod.rs.html#1-261'>[src]</a></span></h1>
-<h2 id='reexports' class='section-header'><a href="#reexports">Reexports</a></h2>
+        </span><a id='src-50821' href='../../src/earth/repository/mod.rs.html#1-270'>[src]</a></span></h1>
+<div class='docblock'><p>Abstracts storage backend e.g. filesystem.</p>
+
+<p>There might be platforms that have no chance to directly access file system
+e.g. iOS, and in that case the concept of repository makes you to store
+data directly to <a href="http://dropbox.com/">Dropbox</a> or <a href="https://drive.google.com/">Google Drive</a> instead of filesystem.
+However in the most cases we will simply use <code>FileSystemRepository</code> even if
+data are synchronized using Dropbox or <code>rsync</code>.</p>
+</div><h2 id='reexports' class='section-header'><a href="#reexports">Reexports</a></h2>
 <table><tr><td><code>pub use self::utils::{<a class='trait' href='../../earth/repository/utils/trait.Bytes.html' title='earth::repository::utils::Bytes'>Bytes</a>, <a class='struct' href='../../earth/repository/utils/struct.Names.html' title='earth::repository::utils::Names'>Names</a>};</code></td></tr><tr><td><code>pub use self::<a class='mod'
                                             href='./fs/index.html'>fs</a>::<a class='struct' href='../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
 <table>
