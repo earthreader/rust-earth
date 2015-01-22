@@ -185,7 +185,7 @@ impl<'a, B: Buffer + 'a> Drop for NestedEventReader<'a, B> {
     }
 }
 
-pub mod events {
+mod events {
     use std::fmt;
 
     use xml::common;

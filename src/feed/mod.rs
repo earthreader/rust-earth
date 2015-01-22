@@ -32,17 +32,17 @@ pub use self::person::Person;
 pub use self::source::Source;
 pub use self::text::Text;
 
-pub mod category;
-pub mod content;
-pub mod entry;
-pub mod feed;
-pub mod generator;
-pub mod link;
-pub mod mark;
-pub mod metadata;
-pub mod person;
-pub mod source;
-pub mod text;
+mod category;
+mod content;
+mod entry;
+mod feed;
+mod generator;
+mod link;
+mod mark;
+mod metadata;
+mod person;
+mod source;
+mod text;
 
 
 /// The XML namespace name used for Atom (RFC 4287).

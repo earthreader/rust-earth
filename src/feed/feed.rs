@@ -5,11 +5,8 @@ use std::default::Default;
 use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
-use xml;
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
-use parser::base::NestedEventReader;
-use parser::base::NestedEvent::Nested;
 use schema::{DocumentElement, FromSchemaReader};
 
 use super::{ATOM_XMLNS, Entry, Source, Text};
@@ -56,21 +53,6 @@ impl Feed {
     }
 }
 
-pub fn read_feed<B: Buffer>(buf: B) -> Feed {
-    let mut parser = xml::EventReader::new(buf);
-    let mut events = NestedEventReader::new(&mut parser);
-    let mut feed: Feed = Default::default();
-    for_each!(event in events.next() {
-        match event {
-            Nested { name: _, element } =>
-                FromSchemaReader::read_from(&mut feed, element).unwrap(),
-            _ => { }
-        }
-    });
-    feed
-}
-
-
 impl DocumentElement for Feed {
     fn tag() -> &'static str { "feed" }
     fn xmlns() -> Option<&'static str> { Some(ATOM_XMLNS) }
@@ -94,11 +76,17 @@ impl FromSchemaReader for Feed {
 
 #[cfg(test)]
 mod test {
-    use super::{Feed, read_feed};
+    use super::Feed;
+
+    use std::default::Default;
 
     use chrono::{Offset, UTC};
-    
+    use xml;
+
     use feed::{Link, Person, Text};
+    use parser::base::NestedEventReader;
+    use parser::base::NestedEvent::Nested;
+    use schema::FromSchemaReader;
 
     fn fx_feed() -> Feed {
         read_feed(r##"
@@ -132,6 +120,20 @@ mod test {
         </feed>
         "## // "
         .as_bytes())
+    }
+
+    fn read_feed<B: Buffer>(buf: B) -> Feed {
+        let mut parser = xml::EventReader::new(buf);
+        let mut events = NestedEventReader::new(&mut parser);
+        let mut feed: Feed = Default::default();
+        for_each!(event in events.next() {
+            match event {
+                Nested { name: _, element } =>
+                    FromSchemaReader::read_from(&mut feed, element).unwrap(),
+                _ => { }
+            }
+        });
+        feed
     }
 
     #[test]

@@ -2,10 +2,9 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico")]
 #![feature(plugin, unboxed_closures, unsafe_destructor)]
 #![allow(unstable)]
-//! # rust-earth
-//!
 //! **rust-earth** is an alternative library of [libearth][], the shared common
 //! library for various [Earth Reader][] apps.
+//!
 //! Earth Reader try to support many platforms as possible (e.g. [web][],
 //! mobile apps, desktop apps), so there must be a large part of common concepts
 //! and implementations they share like subscription lists, synchronization

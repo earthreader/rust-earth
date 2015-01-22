@@ -229,6 +229,7 @@ pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
 impl<'a, I: Iterator<Item=&'a Link>> LinkIteratorExt<'a> for I { }
 
 
+#[deprecated = "wondering where this struct is needed"]
 #[derive(Default, Show)]
 pub struct LinkList(pub Vec<Link>);
 
@@ -253,7 +254,7 @@ impl FromIterator<Link> for LinkList {
 
 #[cfg(test)]
 mod test {
-    use super::{Link, LinkIteratorExt, LinkList};
+    use super::{Link, LinkIteratorExt};
 
     use std::default::Default;
 
@@ -301,8 +302,8 @@ mod test {
                              "title=\"Hong Minhee\'s website\">"));
     }
 
-    fn fx_feed_links() -> LinkList {
-        LinkList(vec![
+    fn fx_feed_links() -> Vec<Link> {
+        vec![
             Link::new("http://example.org/"),
             Link {
                 relation: "alternate".to_string(),
@@ -351,8 +352,8 @@ mod test {
                 mimetype: Some("image/png".to_string()),
                 uri: "http://example.com/favicon.png".to_string(),
                 title: None, language: None, byte_size: None,
-            }
-            ])
+            },
+        ]
     }
 
     #[test]

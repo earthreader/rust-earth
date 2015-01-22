@@ -1,3 +1,12 @@
+//! Parsing Atom feed.
+//!
+//! Atom specification is [RFC 4287][].
+//!
+//! [RFC 4287]: https://tools.ietf.org/html/rfc4287
+//!
+//! ### Todo
+//!
+//! Parsing text construct which `type` is `"xhtml"`.
 use std::borrow::{IntoCow, ToOwned};
 use std::default::Default;
 use std::str::FromStr;

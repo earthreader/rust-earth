@@ -1,5 +1,14 @@
 #![unstable]
-
+//! Abstracts storage backend e.g. filesystem.
+//!
+//! There might be platforms that have no chance to directly access file system
+//! e.g. iOS, and in that case the concept of repository makes you to store
+//! data directly to [Dropbox][] or [Google Drive][] instead of filesystem.
+//! However in the most cases we will simply use `FileSystemRepository` even if
+//! data are synchronized using Dropbox or `rsync`.
+//!
+//! [Dropbox]: http://dropbox.com/
+//! [Google Drive]: https://drive.google.com/
 use std::error::{Error, FromError};
 use std::io::IoError;
 use std::path::BytesContainer;
@@ -132,7 +141,7 @@ pub trait ToRepository<R: Repository> {
     fn from_repo(repo: &R, scheme: &str) -> Self;
 }
 
-pub mod utils {
+mod utils {
     pub trait Bytes {
         fn as_bytes<'a>(&'a self) -> &'a [u8];
     }
