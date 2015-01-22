@@ -2,6 +2,13 @@
 name = "rust-earth"
 version = "0.0.1"
 authors = ["kroisse@gmail.com"]
+description = "The alternative library of libearth, the shared common library for various Earth Reader apps."
+documentation = "http://earthreader.org/rust-earth/nightly/earth/index.html"
+homepage = "http://earthreader.org/"
+repository = "https://github.com/earthreader/rust-earth"
+readme = "README.md"
+keywords = ["rss", "atom", "subscription", "sync", "web"]
+license = "GPL-2.0+"
 
 [lib]
 name = "earth"

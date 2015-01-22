@@ -1,5 +1,21 @@
+#![doc(html_logo_url = "http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico")]
 #![feature(plugin, unboxed_closures, unsafe_destructor)]
 #![allow(unstable)]
+//! # rust-earth
+//!
+//! **Rust-earth** is an alternative library of [libearth][], the shared common
+//! library for various [Earth Reader][] apps.
+//! Earth Reader try to support many platforms as possible (e.g. [web][],
+//! mobile apps, desktop apps), so there must be a large part of common concepts
+//! and implementations they share like subscription lists, synchronization
+//! through cloud storages between several devices, and crawler, that libearth
+//! actually implements.  Rust-earth is developing to cover the corner cases
+//! which libearth cannot be easily included like mobile devices.
+//!
+//! [libearth]: https://github.com/earthreader/libearth
+//! [Earth Reader]: http://earthreader.org/
+//! [web]: https://github.com/earthreader/web
 
 #[plugin] #[no_link] extern crate regex_macros;
 #[plugin] #[no_link] extern crate string_cache_macros;
