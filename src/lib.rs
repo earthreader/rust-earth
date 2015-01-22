@@ -1,5 +1,6 @@
 #![doc(html_logo_url = "http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico")]
+       html_favicon_url = "http://earthreader.org/favicon.ico",
+       html_root_url = "http://earthreader.org/rust-earth/")]
 #![feature(plugin, unboxed_closures, unsafe_destructor)]
 #![allow(unstable)]
 //! **rust-earth** is an alternative library of [libearth][], the shared common
