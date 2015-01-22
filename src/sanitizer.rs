@@ -27,16 +27,17 @@ pub fn sanitize_html<'a>(html: &'a str, base_uri: Option<&str>) ->
     SanitizeHtml(html, base_uri.and_then(|e| Url::parse(e).ok()))
 }
 
+#[doc(hidden)]
 pub type EscapeTable<'a> = Cow<'a, Vec<(char, &'static str)>,
                                       [(char, &'static str)]>;
 
-pub const ESCAPE: EscapeTable<'static> = Cow::Borrowed(&[
+const ESCAPE: EscapeTable<'static> = Cow::Borrowed(&[
     ('&', "&amp;"),
     ('<', "&lt;"),
     ('>', "&gt;"),
 ]);
 
-pub const QUOTE: EscapeTable<'static> = Cow::Borrowed(&[
+const QUOTE: EscapeTable<'static> = Cow::Borrowed(&[
     ('&', "&amp;"),
     ('<', "&lt;"),
     ('>', "&gt;"),
@@ -44,6 +45,7 @@ pub const QUOTE: EscapeTable<'static> = Cow::Borrowed(&[
     ('\'', "&#x27;"),
 ]);
 
+#[doc(hidden)]
 pub const QUOTE_BR: EscapeTable<'static> = Cow::Borrowed(&[
     ('&', "&amp;"),
     ('<', "&lt;"),
