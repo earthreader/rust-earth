@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use html::Html;
+use html::ForHtml;
 use sanitizer::escape;
 
 use parser::base::{DecodeResult, XmlElement};
@@ -32,8 +32,8 @@ impl fmt::String for Generator {
     }
 }
 
-impl Html for Generator {
-    fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> fmt::String for ForHtml<'a, Generator> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref uri) = self.uri {
             try!(write!(f, "<a href=\"{}\">", escape(&uri[], false)));
         }
@@ -64,7 +64,7 @@ impl FromSchemaReader for Generator {
 mod test {
     use super::Generator;
 
-    use html::HtmlExt;
+    use html::ToHtml;
 
     #[test]
     fn test_generator_str() {

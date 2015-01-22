@@ -1,35 +1,56 @@
 #![experimental]
+//! The adatper to display a given value as an HTML element.
+//!
+//! ## Example
+//!
+//! ```
+//! use earth::feed::Link;
+//! use earth::html::{ForHtml, ToHtml};
+//! let link = Link::new("http://earthreader.org/");
+//!
+//! assert_eq!(format!("{}", link), "http://earthreader.org/");
+//! assert_eq!(format!("{}", link.to_html()),
+//!            r#"<link rel="alternate" href="http://earthreader.org/">"#);
+//! ```
+//!
+//! If you want to convert the type of values to an HTML element, you can
+//! implement `std::fmt::String` trait on the type wrapped by this adapter.
+//!
+//! ```
+//! use earth::html::{ForHtml, ToHtml};
+//! use std::fmt;
+//!
+//! struct Answer(i32);
+//!
+//! impl<'a> fmt::String for ForHtml<'a, Answer> {
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//!         write!(f, "<em>{}</em>", self.0)
+//!     }
+//! }
+//! 
+//! assert_eq!(format!("{}", Answer(42).to_html()), "<em>42</em>");
+//! ```
+//!
+//! This pattern was suggested from [rust-lang/rfcs#565][].
+//!
+//! [rust-lang/rfcs#565]: https://github.com/rust-lang/rfcs/blob/master/text/0565-show-string-guidelines.md#user-facing-fmtdisplay
 
+use std::ops::Deref;
 use std::fmt;
 
-#[experimental]
-/// When a value can be semantically expressed as an HTML element, this trait
-/// may be used.
-///
-/// ## Example
-///
-/// ```
-/// # use earth::feed::Link;
-/// # use earth::html::HtmlExt;
-/// let link = Link::new("http://earthreader.org/");
-/// assert_eq!(format!("{}", link), "http://earthreader.org/");
-/// assert_eq!(format!("{}", link.to_html()),
-///            r#"<link rel="alternate" href="http://earthreader.org/">"#);
-/// ```
-pub trait Html {
-    fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result;
-}
 
 #[experimental]
-pub trait HtmlExt: Html {
-    fn to_html(&self) -> HtmlWrapper<Self> { HtmlWrapper(self) }
+pub struct ForHtml<'a, T: ?Sized + 'a> { _inner: &'a T }
+
+impl<'a, T: ?Sized> Deref for ForHtml<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T { self._inner }
 }
 
-impl<T: Html> HtmlExt for T { }
 
 #[experimental]
-pub struct HtmlWrapper<'a, T: ?Sized + 'a + Html>(&'a T);
-
-impl<'a, T: Html> fmt::String for HtmlWrapper<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt_html(f) }
+pub trait ToHtml {
+    fn to_html(&self) -> ForHtml<Self> { ForHtml { _inner: self } }
 }
+
+impl<'a, T> ToHtml for T where ForHtml<'a, T>: fmt::String { }

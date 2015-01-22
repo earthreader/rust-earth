@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use regex::Regex;
 
-use html::Html;
+use html::ForHtml;
 use parser::base::{DecodeResult, XmlElement};
 use schema::FromSchemaReader;
 
@@ -106,8 +106,8 @@ impl fmt::String for Link {
     }
 }
 
-impl Html for Link {
-    fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> fmt::String for ForHtml<'a, Link> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "<link rel=\"{}\"", self.relation));
         if let Some(ref mimetype) = self.mimetype {
             try!(write!(f, " type=\"{}\"", mimetype));
@@ -257,7 +257,7 @@ mod test {
 
     use std::default::Default;
 
-    use html::HtmlExt;
+    use html::ToHtml;
 
     #[test]
     fn test_link_html_property() {

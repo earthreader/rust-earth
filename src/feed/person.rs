@@ -5,7 +5,7 @@ use std::default::Default;
 use std::fmt;
 use std::ops::Deref;
 
-use html::{Html};
+use html::ForHtml;
 use parser::base::{DecodeResult, DecodeError, XmlElement, XmlName};
 use parser::base::NestedEvent::Nested;
 use sanitizer::escape;
@@ -60,8 +60,8 @@ impl fmt::String for Person {
     }
 }
 
-impl Html for Person {
-    fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> fmt::String for ForHtml<'a, Person> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = escape(&self.name[], true);
         let hyperlink = match (self.uri.as_ref(), self.email.as_ref()) {
             (Some(uri), _) => {
@@ -132,7 +132,7 @@ impl FromSchemaReader for Option<Person> {
 mod test {
     use super::{Person};
 
-    use html::{HtmlExt};
+    use html::ToHtml;
 
     #[test]
     fn test_person_str() {

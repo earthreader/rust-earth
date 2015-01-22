@@ -7,7 +7,7 @@ use std::default::Default;
 use std::ops::Deref;
 use std::fmt;
 
-use html::{Html};
+use html::ForHtml;
 use mimetype::MimeType;
 use sanitizer;
 use sanitizer::{clean_html, sanitize_html};
@@ -91,8 +91,8 @@ impl fmt::String for Text {
     }
 }
 
-impl Html for Text {
-    fn fmt_html(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> fmt::String for ForHtml<'a, Text> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.sanitized_html(None))
     }
 }
