@@ -15,7 +15,7 @@ use std::string::CowString;
 use chrono::{DateTime, FixedOffset};
 use xml;
 
-use super::base::{NestedEventReader, DecodeResult,
+use super::base::{NestedEventReader, DecodeError, DecodeResult,
                   XmlAttribute, XmlElement, XmlName};
 use super::base::DecodeError::{AttributeNotFound, SchemaError};
 use super::base::NestedEvent::{EndDocument, Nested};
@@ -30,9 +30,6 @@ static ATOM_XMLNS_SET: [&'static str; 2] = [
 ];
 
 static XML_XMLNS: &'static str = "http://www.w3.org/XML/1998/namespace";
-
-#[allow(missing_copy_implementations)]
-pub struct CrawlerHint;
 
 #[derive(Clone)]
 struct AtomSession<'a> {
@@ -49,7 +46,7 @@ impl<'a> AtomSession<'a> {
 }
 
 pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool)
-                             -> DecodeResult<(feed::Feed, Option<CrawlerHint>)>
+                             -> DecodeResult<feed::Feed>
 {
     let mut parser = xml::EventReader::new(xml);
     let mut events = NestedEventReader::new(&mut parser);
@@ -77,9 +74,9 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool)
         }
     });
     match result {
-        Some(Ok(r)) => Ok((r, None)),
+        Some(Ok(r)) => Ok(r),
         Some(Err(e)) => Err(e),
-        None => Err(super::base::DecodeError::NoResult),
+        None => Err(DecodeError::NoResult),
     }
 }
 
