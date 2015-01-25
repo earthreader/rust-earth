@@ -6,7 +6,7 @@ use html::ForHtml;
 use sanitizer::escape;
 
 use parser::base::{DecodeResult, XmlElement};
-use schema::FromSchemaReader;
+use schema::{FromSchemaReader, Mergeable};
 
 
 /// Identify the agent used to generate a feed, for debugging and other
@@ -58,6 +58,8 @@ impl FromSchemaReader for Generator {
         Ok(())
     }
 }
+
+impl Mergeable for Generator { }
 
 
 #[cfg(test)]

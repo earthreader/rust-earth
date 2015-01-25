@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 use chrono::{DateTime, FixedOffset};
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
-use schema::{DocumentElement, FromSchemaReader};
+use schema::{DocumentElement, FromSchemaReader, Mergeable};
 
 use super::{ATOM_XMLNS, Entry, Source, Text};
 
@@ -72,6 +72,8 @@ impl FromSchemaReader for Feed {
         Ok(())
     }
 }
+
+impl_mergeable!(Feed, source, entries);
 
 
 #[cfg(test)]

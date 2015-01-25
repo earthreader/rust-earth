@@ -1,12 +1,13 @@
 #![unstable]
 
+use std::borrow::Cow;
 use std::default::Default;
 use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
-use schema::{DocumentElement, FromSchemaReader, Mergeable};
+use schema::{DocumentElement, Entity, FromSchemaReader, Mergeable};
 
 use util::set_default;
 
@@ -115,10 +116,12 @@ impl FromSchemaReader for Entry {
     }
 }
 
-impl Mergeable for Entry {
-    fn merge_entities(mut self, other: Entry) -> Entry {
-        self.read = self.read.merge_entities(other.read);
-        self.starred = self.starred.merge_entities(other.starred);
-        self
+impl Entity for Entry {
+    type OwnedId = String;
+    type BorrowedId = str;
+    fn entity_id(&self) -> Cow<String, str> {
+        self.metadata.entity_id()
     }
 }
+
+impl_mergeable!(Entry, read, starred);

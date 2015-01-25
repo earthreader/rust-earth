@@ -1,14 +1,15 @@
 #![unstable]
 
+use std::borrow::Cow;
 use std::default::Default;
 
 use chrono::{DateTime, FixedOffset};
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
-use schema::FromSchemaReader;
+use schema::{Entity, FromSchemaReader, Mergeable};
 use util::set_default;
 
-use super::{ATOM_XMLNS, Category, LinkList, Person, Text, parse_datetime};
+use super::{ATOM_XMLNS, Category, Link, Person, Text, parse_datetime};
 
 /// Common metadata shared by `Source`, `Entry`, and `Feed`.
 pub struct Metadata {
@@ -23,7 +24,7 @@ pub struct Metadata {
     /// The list of :class:`Link` objects that define a reference from an entry
     /// or feed to a web resource.  It corresponds to `atom:link` element of
     /// :rfc:`4287#section-4.2.7` (section 4.2.7).
-    pub links: LinkList,
+    pub links: Vec<Link>,
 
     /// The datetime value with a fixed timezone offset, indicating the most
     /// recent instant in time when the entry was modified in a way the
@@ -125,3 +126,14 @@ impl FromSchemaReader for Metadata {
         Ok(())
     }
 }
+
+impl Entity for Metadata {
+    type OwnedId = String;
+    type BorrowedId = str;
+    fn entity_id(&self) -> Cow<String, str> {
+        Cow::Borrowed(&self.id[])
+    }
+}
+
+impl_mergeable!(Metadata, id, title, links, updated_at, authors,
+                          contributors, categories, rights);

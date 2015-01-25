@@ -4,6 +4,7 @@ use std::borrow::ToOwned;
 use std::default::Default;
 use std::fmt;
 use std::iter::{FromIterator, Filter};
+use std::mem::swap;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
@@ -11,7 +12,8 @@ use regex::Regex;
 
 use html::ForHtml;
 use parser::base::{DecodeResult, XmlElement};
-use schema::FromSchemaReader;
+use schema::{FromSchemaReader, Mergeable};
+use util::merge_vec;
 
 /// Link element defined in RFC 4287 (section 4.2.7).
 ///
@@ -251,6 +253,14 @@ impl FromIterator<Link> for LinkList {
         LinkList(FromIterator::from_iter(iterator))
     }
 }
+
+impl Mergeable for Vec<Link> {
+    fn merge_with(&mut self, mut other: Vec<Link>) {
+        swap(self, &mut other);
+        merge_vec(self, other.into_iter());
+    }
+}
+
 
 #[cfg(test)]
 mod test {

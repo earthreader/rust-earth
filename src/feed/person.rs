@@ -3,14 +3,15 @@
 use std::borrow::ToOwned;
 use std::default::Default;
 use std::fmt;
+use std::mem::swap;
 use std::ops::Deref;
 
 use html::ForHtml;
 use parser::base::{DecodeResult, DecodeError, XmlElement, XmlName};
 use parser::base::NestedEvent::Nested;
 use sanitizer::escape;
-use schema::FromSchemaReader;
-use util::set_default;
+use schema::{FromSchemaReader, Mergeable};
+use util::{merge_vec, set_default};
 
 /// Person construct defined in RFC 4287 (section 3.2).
 ///
@@ -124,6 +125,13 @@ impl FromSchemaReader for Option<Person> {
             _ => { return Err(DecodeError::NoResult); }
         }
         Ok(())
+    }
+}
+
+impl Mergeable for Vec<Person> {
+    fn merge_with(&mut self, mut other: Vec<Person>) {
+        swap(self, &mut other);
+        merge_vec(self, other.into_iter());
     }
 }
 

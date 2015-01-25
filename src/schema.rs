@@ -1,7 +1,12 @@
 #![unstable]
 
+use std::borrow::{BorrowFrom, Cow, ToOwned};
+use std::collections::hash_map::{Entry, Hasher, HashMap};
 use std::default::Default;
 use std::error::Error;
+use std::hash::Hash;
+
+use chrono::DateTime;
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
 use parser::base::NestedEvent::Nested;
@@ -39,8 +44,70 @@ pub trait Codec<T> {
 }
 
 #[experimental]
-pub trait Mergeable {
-    fn merge_entities(self, other: Self) -> Self;
+pub trait Entity {
+    type OwnedId;
+    type BorrowedId: ?Sized;
+    fn entity_id(&self) -> Cow<<Self as Entity>::OwnedId,
+                               <Self as Entity>::BorrowedId>;
+}
+
+/// This trait is used to merge conflicts between concurrent updates.
+///
+/// ## Note
+///
+/// The default implementation does nothing.  That means the entity of the
+/// newer session will always win unless the method is redefined.
+#[experimental]
+pub trait Mergeable: Sized {
+    /// Merge data with the given value to renew itself as a latest state.
+    ///
+    /// The given argument `other` is guaranteed that it's from the older
+    /// session. (note that it doesn't mean this entity is older than `self`,
+    /// but the last update of the session is)
+    #[inline(always)]
+    fn merge_with(&mut self, other: Self) { let _ = other; /* noop */ }
+}
+
+impl Mergeable for String { }
+impl<Off> Mergeable for DateTime<Off> { }
+
+impl<T: Mergeable> Mergeable for Option<T> {
+    fn merge_with(&mut self, other: Option<T>) {
+        let this = self.take();
+        *self = match (this, other) {
+            (Some(mut a), Some(b)) => {
+                a.merge_with(b);
+                Some(a)
+            }
+            (Some(a), None   ) => Some(a),
+            (None   , Some(b)) => Some(b),
+            (None   , None   ) => None
+        }
+    }
+}
+
+impl<T: Entity + Mergeable> Mergeable for Vec<T>
+    where <T as Entity>::OwnedId: Hash<Hasher> + Eq,
+          <T as Entity>::BorrowedId: Hash<Hasher> + Eq +
+                                     BorrowFrom<<T as Entity>::OwnedId> +
+                                     ToOwned<<T as Entity>::OwnedId>
+{
+    fn merge_with(&mut self, other: Vec<T>) {
+        let mut identifiers: HashMap<<T as Entity>::OwnedId, T> =
+            self.drain().map(|e| (e.entity_id().into_owned(), e)).collect();
+        for element in other.into_iter() {
+            let eid = element.entity_id().into_owned();
+            match identifiers.entry(eid) {
+                Entry::Occupied(mut e) => {
+                    e.get_mut().merge_with(element);
+                }
+                Entry::Vacant(e) => {
+                    e.insert(element);
+                }
+            }
+        }
+        self.extend(identifiers.into_iter().map(|(_, v)| v));
+    }
 }
 
 /// The root element of the document.

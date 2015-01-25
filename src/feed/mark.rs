@@ -1,12 +1,13 @@
 #![unstable]
 
+use std::borrow::Cow;
 use std::default::Default;
 
 use chrono::{DateTime, FixedOffset};
 
 use codecs;    
 use parser::base::{DecodeResult, XmlElement};
-use schema::{Codec, FromSchemaReader, Mergeable};
+use schema::{Codec, Entity, FromSchemaReader, Mergeable};
 
 /// Represent whether the entry is read, starred, or tagged by user.
 ///
@@ -14,7 +15,7 @@ use schema::{Codec, FromSchemaReader, Mergeable};
 /// for Earth Reader.
 ///
 /// [rfc-atom]: https://tools.ietf.org/html/rfc4287
-#[derive(Default, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Show)]
 pub struct Mark {
     /// Whether it's marked or not.
     pub marked: bool,
@@ -23,19 +24,22 @@ pub struct Mark {
     pub updated_at: Option<DateTime<FixedOffset>>,
 }
 
-impl Mark {
+impl Entity for Mark {
+    type OwnedId = ();
+    type BorrowedId = ();
+
     /// If there are two or more marks that have the same tag name, these
     /// are all should be merged into one.
-    #[experimental = "should be exposed as a trait"]
-    fn __entity_id__(&self) -> &str { "" }
+    fn entity_id(&self) -> Cow<(), ()> { Cow::Owned(()) }
 }
 
 impl Mergeable for Mark {
-    fn merge_entities(self, other: Mark) -> Mark {
+    fn merge_with(&mut self, other: Mark) {
         use std::cmp::Ordering::Less;
-        match self.updated_at.cmp(&other.updated_at) {
-            Less => other,
-            _    => self,
+        let cmp = self.updated_at.cmp(&other.updated_at);
+        match cmp {
+            Less => { self.clone_from(&other); }
+            _    => { }
         }
     }
 }

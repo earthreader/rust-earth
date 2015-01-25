@@ -13,7 +13,7 @@ use sanitizer;
 use sanitizer::{clean_html, sanitize_html};
 
 use parser::base::{DecodeResult, DecodeError, XmlElement};
-use schema::FromSchemaReader;
+use schema::{FromSchemaReader, Mergeable};
 
 
 /// Text construct defined in :rfc:`4287#section-3.1` (section 3.1).
@@ -150,6 +150,8 @@ impl FromSchemaReader for Text {
         Ok(())
     }
 }
+
+impl Mergeable for Text { }
 
 
 #[cfg(test)]

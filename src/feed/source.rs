@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 use chrono::{DateTime, FixedOffset};
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
-use schema::FromSchemaReader;
+use schema::{FromSchemaReader, Mergeable};
 
 use util::set_default;
 
@@ -86,3 +86,5 @@ impl FromSchemaReader for Source {
         Ok(())
     }
 }
+
+impl_mergeable!(Source, metadata, subtitle, generator, logo, icon);

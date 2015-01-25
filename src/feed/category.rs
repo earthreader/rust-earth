@@ -1,10 +1,10 @@
 #![unstable]
 
+use std::borrow::{Cow, ToOwned};
 use std::fmt;
-use std::borrow::ToOwned;
 
 use parser::base::{DecodeResult, XmlElement};
-use schema::{FromSchemaReader, Mergeable};
+use schema::{Entity, FromSchemaReader, Mergeable};
 
 /// Category element defined in :rfc:`4287#section-4.2.2` (section 4.2.2).
 #[derive(Default, Show)]
@@ -30,17 +30,19 @@ pub struct Category {
     pub label: Option<String>,
 }
 
-impl Category {
-    #[experimental = "should be exposed as a trait"]
-    fn __entity_id__(&self) -> &str { &self.term[] }
+impl Entity for Category {
+    type OwnedId = String;
+    type BorrowedId = str;
+    fn entity_id(&self) -> Cow<String, str> {
+        Cow::Borrowed(&self.term[])
+    }
 }
 
 impl Mergeable for Category {
-    fn merge_entities(mut self, other: Category) -> Category {
+    fn merge_with(&mut self, other: Category) {
         if self.label.is_none() {
             self.label = other.label
         }
-        self
     }
 }
 
