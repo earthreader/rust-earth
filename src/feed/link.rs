@@ -102,13 +102,13 @@ impl Default for Link {
     fn default() -> Link { Link::new("") }
 }
 
-impl fmt::String for Link {
+impl fmt::Display for Link {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.uri)
     }
 }
 
-impl<'a> fmt::String for ForHtml<'a, Link> {
+impl<'a> fmt::Display for ForHtml<'a, Link> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "<link rel=\"{}\"", self.relation));
         if let Some(ref mimetype) = self.mimetype {

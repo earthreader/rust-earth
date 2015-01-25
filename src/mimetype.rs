@@ -53,7 +53,7 @@ impl MimeType {
     }
 }
 
-impl fmt::String for MimeType {
+impl fmt::Display for MimeType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.mimetype())
     }

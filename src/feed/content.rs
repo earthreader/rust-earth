@@ -78,21 +78,21 @@ impl Blob for Content {
     }
 
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
-        Box<fmt::String + 'a>
+        Box<fmt::Display + 'a>
     {
         match self.mimetype {
             MimeType::Text =>
                 Box::new(escape(self.as_str().unwrap(), true))
-                as Box<fmt::String>,
+                as Box<fmt::Display>,
             MimeType::Html | MimeType::Xhtml =>
                 Box::new(sanitize_html(self.as_str().unwrap(), base_uri))
-                as Box<fmt::String>,
+                as Box<fmt::Display>,
             ref mime if mime.is_text() =>
                 Box::new(escape(self.as_str().unwrap(), true))
-                as Box<fmt::String>,
+                as Box<fmt::Display>,
             _ =>
                 Box::new(self.as_bytes().to_base64(base64::MIME))
-                as Box<fmt::String>,
+                as Box<fmt::Display>,
         }
     }
 }

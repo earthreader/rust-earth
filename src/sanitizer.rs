@@ -102,7 +102,7 @@ pub const QUOTE_BR: EscapeTable<'static> = Cow::Borrowed(&[
 pub struct Escape<'a>(#[doc(hidden)] pub &'a str,
                       #[doc(hidden)] pub EscapeTable<'static>);
 
-impl<'a> fmt::String for Escape<'a> {
+impl<'a> fmt::Display for Escape<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let table = &self.1;
         let mut last_written = 0us;
@@ -129,7 +129,7 @@ impl<'a> fmt::String for Escape<'a> {
 #[experimental]
 pub struct CleanHtml<'a>(pub &'a str);
 
-impl<'a> fmt::String for CleanHtml<'a> {
+impl<'a> fmt::Display for CleanHtml<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sink = MarkupTagCleaner { w: f };
         tokenize_to(sink, one_input(self.0.to_owned()),
@@ -158,7 +158,7 @@ impl<'a, 'b> TokenSink for MarkupTagCleaner<'a, 'b> {
 #[experimental]
 pub struct SanitizeHtml<'a>(pub &'a str, pub Option<Url>);
 
-impl<'a> fmt::String for SanitizeHtml<'a> {
+impl<'a> fmt::Display for SanitizeHtml<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sink = HtmlSanitizer {
             base_uri: &self.1,

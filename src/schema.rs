@@ -4,6 +4,7 @@ use std::borrow::{BorrowFrom, Cow, ToOwned};
 use std::collections::hash_map::{Entry, Hasher, HashMap};
 use std::default::Default;
 use std::error::Error;
+use std::fmt;
 use std::hash::Hash;
 
 use chrono::DateTime;
@@ -22,18 +23,17 @@ pub enum SchemaError {
     DecodeError(&'static str, Option<String>),
 }
 
+impl fmt::Display for SchemaError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
 impl Error for SchemaError {
     fn description(&self) -> &str {
         match *self {
             SchemaError::EncodeError => "Error occured while encoding",
             SchemaError::DecodeError(ref msg, _) => &msg[],
-        }
-    }
-
-    fn detail(&self) -> Option<String> {
-        match *self {
-            SchemaError::EncodeError => None,
-            SchemaError::DecodeError(_, ref detail) => detail.clone(),
         }
     }
 }

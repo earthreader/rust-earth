@@ -75,7 +75,7 @@ pub trait Blob {
     /// assert_eq!(format!("{}", html.sanitized_html(None)), "<p>Hello</p>");
     /// ```
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
-        Box<fmt::String + 'a>;
+        Box<fmt::Display + 'a>;
 }
 
 fn parse_datetime<B: Buffer>(element: XmlElement<B>)

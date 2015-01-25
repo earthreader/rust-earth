@@ -51,7 +51,7 @@ impl Default for Person {
     fn default() -> Person { Person::new("") }
 }
 
-impl fmt::String for Person {
+impl fmt::Display for Person {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{}", self.name));
         if let Some(ref r) = self.uri.as_ref().or(self.email.as_ref()) {
@@ -61,7 +61,7 @@ impl fmt::String for Person {
     }
 }
 
-impl<'a> fmt::String for ForHtml<'a, Person> {
+impl<'a> fmt::Display for ForHtml<'a, Person> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = escape(&self.name[], true);
         let hyperlink = match (self.uri.as_ref(), self.email.as_ref()) {

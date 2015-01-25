@@ -10,6 +10,7 @@
 //! [Dropbox]: http://dropbox.com/
 //! [Google Drive]: https://drive.google.com/
 use std::error::{Error, FromError};
+use std::fmt;
 use std::io::IoError;
 use std::path::BytesContainer;
 
@@ -46,6 +47,31 @@ impl RepositoryError {
     }
 }
 
+impl fmt::Display for RepositoryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{}", self.description()));
+        match *self {
+            RepositoryError::InvalidKey(ref key, _) => {
+                try!(write!(f, ": ["));
+                let mut first = true;
+                for i in key.iter() {
+                    if first { first = false; } else { try!(write!(f, ", ")); }
+                    try!(write!(f, "{:?}", i));
+                }
+                try!(write!(f, "]"));
+            }
+            RepositoryError::InvalidUrl(ref msg) => {
+                try!(write!(f, ": {}", msg));
+            }
+            _ => { }
+        }
+        if let Some(cause) = self.cause() {
+            try!(write!(f, " caused by `{}`", cause));
+        }
+        Ok(())
+    }
+}
+
 impl Error for RepositoryError {
     fn description(&self) -> &str {
         match *self {
@@ -54,14 +80,6 @@ impl Error for RepositoryError {
             RepositoryError::NotADirectory(_) => "not a directory",
             RepositoryError::CannotBorrow => "can't borrow",
             RepositoryError::Io(_) => "IO error"
-        }
-    }
-
-    fn detail(&self) -> Option<String> {
-        match *self {
-            RepositoryError::InvalidUrl(ref msg) => Some(msg.to_string()),
-            RepositoryError::Io(ref err) => err.detail(),
-            _ => None
         }
     }
 

@@ -14,13 +14,43 @@ pub use xml::name::OwnedName as XmlName;
 pub use xml::namespace::Namespace as XmlNamespace;
 pub use self::events::NestedEvent;
 
-#[derive(Show)]
 pub enum DecodeError {
     XmlError(xml::common::Error),
     UnexpectedEvent { event: xml::reader::events::XmlEvent, depth: usize },
     NoResult,
     AttributeNotFound(String),
     SchemaError(schema::SchemaError),
+}
+
+impl fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{}", self.description()));
+        match *self {
+            DecodeError::UnexpectedEvent { ref event, .. } => {
+                try!(write!(f, ": {:?}", event));
+            },
+            DecodeError::AttributeNotFound(ref attr) => {
+                try!(write!(f, ": {}", attr));
+            }
+            _ => { }
+        }
+        if let Some(cause) = self.cause() {
+            try!(write!(f, " caused by `{}`", cause));
+        }
+        Ok(())
+    }
+}
+
+impl Error for DecodeError {
+    fn description(&self) -> &str {
+        match *self {
+            DecodeError::XmlError(..) => "XML parsing error",
+            DecodeError::UnexpectedEvent { .. } => "Met an unexpected event",
+            DecodeError::NoResult => "No result",
+            DecodeError::AttributeNotFound(..) => "Attribute not found",
+            DecodeError::SchemaError(..) => "Schema error",
+        }
+    }
 }
 
 pub type DecodeResult<T> = Result<T, DecodeError>;
@@ -72,7 +102,7 @@ impl<'a, 'b, A: 'a, B: 'b> PartialEq<XmlElement<'b, B>> for XmlElement<'a, A> {
     }
 }
 
-impl<'a, B: 'a> fmt::Show for XmlElement<'a, B> {
+impl<'a, B: 'a> fmt::Debug for XmlElement<'a, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "Element("));
         let ns = &self.namespace.0;
@@ -256,7 +286,7 @@ mod events {
         fn eq(&self, other: &NestedEvent<'a, B>) -> bool { other == self }
     }
 
-    impl<'a, B> fmt::Show for NestedEvent<'a, B> {
+    impl<'a, B> fmt::Debug for NestedEvent<'a, B> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match *self {
                 n::StartDocument { ref version, ref encoding, ref standalone } =>

@@ -23,7 +23,9 @@ url = "*"
 xml-rs = "*"
 
 [dependencies.html5ever]
-git = "https://github.com/servo/html5ever.git"
+# workaround. should be reverted.
+git = "https://github.com/Manishearth/html5ever.git"
+branch = "deprecated"
 
 [dependencies.string_cache]
 git = "https://github.com/servo/string-cache"

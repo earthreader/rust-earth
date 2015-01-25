@@ -22,7 +22,7 @@ pub struct Generator {
     pub value: String,
 }
 
-impl fmt::String for Generator {
+impl fmt::Display for Generator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{}", self.value));
         if let Some(ref version) = self.version {
@@ -32,7 +32,7 @@ impl fmt::String for Generator {
     }
 }
 
-impl<'a> fmt::String for ForHtml<'a, Generator> {
+impl<'a> fmt::Display for ForHtml<'a, Generator> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref uri) = self.uri {
             try!(write!(f, "<a href=\"{}\">", escape(&uri[], false)));

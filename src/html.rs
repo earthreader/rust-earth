@@ -14,7 +14,7 @@
 //! ```
 //!
 //! If you want to convert the type of values to an HTML element, you can
-//! implement `std::fmt::String` trait on the type wrapped by this adapter.
+//! implement `std::fmt::Display` trait on the type wrapped by this adapter.
 //!
 //! ```
 //! use earth::html::{ForHtml, ToHtml};
@@ -22,7 +22,7 @@
 //!
 //! struct Answer(i32);
 //!
-//! impl<'a> fmt::String for ForHtml<'a, Answer> {
+//! impl<'a> fmt::Display for ForHtml<'a, Answer> {
 //!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //!         write!(f, "<em>{}</em>", self.0)
 //!     }
@@ -53,4 +53,4 @@ pub trait ToHtml {
     fn to_html(&self) -> ForHtml<Self> { ForHtml { _inner: self } }
 }
 
-impl<'a, T> ToHtml for T where ForHtml<'a, T>: fmt::String { }
+impl<'a, T> ToHtml for T where ForHtml<'a, T>: fmt::Display { }

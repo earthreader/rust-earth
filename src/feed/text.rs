@@ -82,7 +82,7 @@ impl Default for Text {
     }
 }
 
-impl fmt::String for Text {
+impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Text::Plain(ref value) => write!(f, "{}", value),
@@ -91,7 +91,7 @@ impl fmt::String for Text {
     }
 }
 
-impl<'a> fmt::String for ForHtml<'a, Text> {
+impl<'a> fmt::Display for ForHtml<'a, Text> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.sanitized_html(None))
     }
@@ -119,15 +119,15 @@ impl Blob for Text {
 
     #[unstable = "incomplete"]
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
-        Box<fmt::String + 'a>
+        Box<fmt::Display + 'a>
     {
         match *self {
             Text::Plain(ref value) => {
                 let s = sanitizer::Escape(&value[], sanitizer::QUOTE_BR);
-                Box::new(s) as Box<fmt::String>
+                Box::new(s) as Box<fmt::Display>
             }
             Text::Html(ref value) =>
-                Box::new(sanitize_html(&value[], base_uri)) as Box<fmt::String>,
+                Box::new(sanitize_html(&value[], base_uri)) as Box<fmt::Display>,
         }
     }
 }
