@@ -92,7 +92,7 @@ impl Repository for FileSystemRepository {
     }
 
     fn list<'a, T: BytesContainer>(&'a self, key: &[T]) ->
-        RepositoryResult<Names<'a>>
+        RepositoryResult<Names>
     {
         let names = match readdir(&self.path.join_many(key)) {
             Ok(v) => v,
@@ -100,7 +100,7 @@ impl Repository for FileSystemRepository {
         };
         let iter = names.into_iter().filter_map(|path| path.filename()
                                                 .map(|p| p.to_vec()));
-        Ok(Names::new(iter))
+        Ok(Box::new(iter) as Names)
     }
 }
 

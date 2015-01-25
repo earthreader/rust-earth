@@ -160,6 +160,8 @@ pub trait ToRepository<R: Repository> {
 }
 
 mod utils {
+    pub type Names<'a> = Box<Iterator<Item=Vec<u8>> + 'a>;
+
     pub trait Bytes {
         fn as_bytes<'a>(&'a self) -> &'a [u8];
     }
@@ -182,23 +184,6 @@ mod utils {
 
     impl<'a, T: ?Sized + Bytes> Bytes for &'a T {
         fn as_bytes(&self) -> &[u8] { (*self).as_bytes() }
-    }
-
-    #[experimental = "waiting <https://github.com/rust-lang/rust/pull/21392>"]
-    pub struct Names<'a>(Box<Iterator<Item=Vec<u8>> + 'a>);
-
-    impl<'a> Names<'a> {
-        pub fn new<'b, T>(iter: T) -> Names<'b>
-            where T: Iterator<Item=Vec<u8>> + 'b
-        {
-            Names(Box::new(iter) as Box<Iterator<Item=Vec<u8>>>)
-        }
-    }
-
-    impl<'a> Iterator for Names<'a> {
-        type Item = Vec<u8>;
-        fn next(&mut self) -> Option<Vec<u8>> { self.0.next() }
-        fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
     }
 }
 
@@ -240,7 +225,7 @@ pub mod test {
                 fn next(&mut self) -> Option<Vec<u8>> { None }
                 fn size_hint(&self) -> (usize, Option<usize>) { (0, Some(0)) }
             }
-            Ok(Names::new(Empty))
+            Ok(Box::new(Empty) as Names)
         }
     }
 

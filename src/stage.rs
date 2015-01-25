@@ -111,11 +111,11 @@ mod dirtybuffer {
             });
             let src = match self.inner.list(key) {
                 Ok(src) => src,
-                Err(_) => { return Ok(Names::new(names)); }
+                Err(_) => { return Ok(Box::new(names) as Names); }
             };
             let mut names: HashSet<_> = names.collect();
             names.extend(src);
-            Ok(Names::new(names.into_iter()))
+            Ok(Box::new(names.into_iter()) as Names)
         }
     }
 
