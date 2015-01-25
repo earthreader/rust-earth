@@ -1,5 +1,5 @@
 #![experimental]
-
+//! Sanitize HTML tags.
 use std::borrow::{Cow, IntoCow, ToOwned};
 use std::default::Default;
 use std::fmt;
@@ -13,14 +13,57 @@ use html5ever::driver::{tokenize_to, one_input};
 use regex;
 use url::{Url, UrlParser};
 
+/// Convert given string to HTML-safe sequences by replacing the characters
+/// `&`, `<` and `>`.  If the optional `flag` quote is true, the characters `"`
+/// and `'` are also translated.
+///
+/// ### Example
+///
+/// ```
+/// # use earth::sanitizer::escape;
+/// let s = r#"<a href="http://example.org/?a=1&b=2">Example</a>"#;
+/// assert_eq!(format!("{}", escape(s, false)),
+///            r#"&lt;a href="http://example.org/?a=1&amp;b=2"&gt;Example&lt;/a&gt;"#);
+/// assert_eq!(format!("{}", escape(s, true)),
+///            r#"&lt;a href=&quot;http://example.org/?a=1&amp;b=2&quot;&gt;Example&lt;/a&gt;"#);
+/// ```
 pub fn escape<'a>(text: &'a str, quote: bool) -> Escape<'a> {
     Escape(text, if quote { QUOTE } else { ESCAPE })
 }
 
+/// Strip *all* markup tags from HTML string.
+/// That means, it simply makes the given HTML document a plain text.
+///
+/// ### Example
+///
+/// ```
+/// # use earth::sanitizer::clean_html;
+/// let s = "<em>Simple</em> example";
+/// assert_eq!(format!("{}", clean_html(s)), "Simple example");
+/// ```
 pub fn clean_html<'a>(html: &'a str) -> CleanHtml<'a> {
     CleanHtml(html)
 }
 
+/// Sanitize the given HTML string.  It removes the following tags and
+/// attributes that are not secure nor useful for RSS reader layout:
+///
+/// - `<script>` tags
+/// - `display: none;` styles
+/// - JavaScript event attributes e.g. `onclick`, `onload`
+/// - `href` attributes that start with `javascript:`, `jscript:`,
+///   `livescript:`, `vbscript:`, `data:`, `about:`, or `mocha:`.
+///
+/// Also, it rebases all links on the ``base_uri`` if it's given.
+///
+/// ### Example
+///
+/// ```
+/// # use earth::sanitizer::sanitize_html;
+/// let s = r#"<a href="a/b/c">Example</a>"#;
+/// assert_eq!(format!("{}", sanitize_html(s, Some("http://example.org/"))),
+///            r#"<a href="http://example.org/a/b/c">Example</a>"#);
+/// ```
 pub fn sanitize_html<'a>(html: &'a str, base_uri: Option<&str>) ->
     SanitizeHtml<'a>
 {
