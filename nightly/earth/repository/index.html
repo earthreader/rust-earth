@@ -26,7 +26,7 @@
 
     <section class="sidebar">
         <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../index.html'>earth</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='../codecs/index.html'>codecs</a><a class='mod ' href='../feed/index.html'>feed</a><a class='mod ' href='../html/index.html'>html</a><a class='mod ' href='../mimetype/index.html'>mimetype</a><a class='mod ' href='../parser/index.html'>parser</a><a class='mod current' href='../repository/index.html'>repository</a><a class='mod ' href='../sanitizer/index.html'>sanitizer</a><a class='mod ' href='../schema/index.html'>schema</a><a class='mod ' href='../stage/index.html'>stage</a><a class='mod ' href='../util/index.html'>util</a></div>
+        <p class='location'><a href='../index.html'>earth</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='../codecs/index.html' title='Provides commonly used codecs to parse RSS-related standard formats.'>codecs</a><a class='mod ' href='../feed/index.html' title='Data structures for feeds.'>feed</a><a class='mod ' href='../html/index.html' title='The adatper to display a given value as an HTML element.'>html</a><a class='mod ' href='../mimetype/index.html' title=''>mimetype</a><a class='mod ' href='../parser/index.html' title='Parsing various RSS formats.'>parser</a><a class='mod current' href='../repository/index.html' title='Abstracts storage backend e.g. filesystem.'>repository</a><a class='mod ' href='../sanitizer/index.html' title='Sanitize HTML tags.'>sanitizer</a><a class='mod ' href='../schema/index.html' title=''>schema</a><a class='mod ' href='../stage/index.html' title=''>stage</a><a class='mod ' href='../util/index.html' title=''>util</a></div>
     </section>
 
     <nav class="sub">
@@ -44,7 +44,7 @@
 <h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>earth</a>::<wbr><a class='mod' href=''>repository</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-50821' href='../../src/earth/repository/mod.rs.html#1-270'>[src]</a></span></h1>
+        </span><a id='src-51030' href='../../src/earth/repository/mod.rs.html#1-273'>[src]</a></span></h1>
 <div class='docblock'><p>Abstracts storage backend e.g. filesystem.</p>
 
 <p>There might be platforms that have no chance to directly access file system
@@ -53,18 +53,12 @@ data directly to <a href="http://dropbox.com/">Dropbox</a> or <a href="https://d
 However in the most cases we will simply use <code>FileSystemRepository</code> even if
 data are synchronized using Dropbox or <code>rsync</code>.</p>
 </div><h2 id='reexports' class='section-header'><a href="#reexports">Reexports</a></h2>
-<table><tr><td><code>pub use self::utils::{<a class='trait' href='../../earth/repository/utils/trait.Bytes.html' title='earth::repository::utils::Bytes'>Bytes</a>, <a class='struct' href='../../earth/repository/utils/struct.Names.html' title='earth::repository::utils::Names'>Names</a>};</code></td></tr><tr><td><code>pub use self::<a class='mod'
+<table><tr><td><code>pub use self::<a class='mod'
                                             href='./fs/index.html'>fs</a>::<a class='struct' href='../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
 <table>
                     <tr>
                         <td><a class='stability Unstable' title='Unstable'></a><a class='mod' href='fs/index.html'
                                title='earth::repository::fs'>fs</a></td>
-                        <td class='docblock short'></td>
-                    </tr>
-                
-                    <tr>
-                        <td><a class='stability Unstable' title='Unstable'></a><a class='mod' href='utils/index.html'
-                               title='earth::repository::utils'>utils</a></td>
                         <td class='docblock short'></td>
                     </tr>
                 </table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
@@ -76,6 +70,12 @@ data are synchronized using Dropbox or <code>rsync</code>.</p>
                     </tr>
                 </table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
 <table>
+                    <tr>
+                        <td><a class='stability Unstable' title='Unstable'></a><a class='trait' href='trait.Bytes.html'
+                               title='earth::repository::Bytes'>Bytes</a></td>
+                        <td class='docblock short'></td>
+                    </tr>
+                
                     <tr>
                         <td><a class='stability Unstable' title='Unstable'></a><a class='trait' href='trait.Repository.html'
                                title='earth::repository::Repository'>Repository</a></td>
@@ -91,6 +91,12 @@ Stage objects can deal with documents to be stored using the interface.</p>
                     </tr>
                 </table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
 <table>
+                    <tr>
+                        <td><a class='stability Unstable' title='Unstable'></a><a class='type' href='type.Names.html'
+                               title='earth::repository::Names'>Names</a></td>
+                        <td class='docblock short'></td>
+                    </tr>
+                
                     <tr>
                         <td><a class='stability Unstable' title='Unstable'></a><a class='type' href='type.RepositoryResult.html'
                                title='earth::repository::RepositoryResult'>RepositoryResult</a></td>

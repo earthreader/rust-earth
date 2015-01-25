@@ -128,6 +128,8 @@
 <span id="86">86</span>
 <span id="87">87</span>
 <span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
 </pre><pre class='rust '>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 
@@ -137,7 +139,7 @@
 <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>DateTime</span>, <span class='ident'>FixedOffset</span>};
 
 <span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::{<span class='ident'>DecodeResult</span>, <span class='ident'>XmlElement</span>, <span class='ident'>XmlName</span>};
-<span class='kw'>use</span> <span class='ident'>schema</span>::<span class='ident'>FromSchemaReader</span>;
+<span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>FromSchemaReader</span>, <span class='ident'>Mergeable</span>};
 
 <span class='kw'>use</span> <span class='ident'>util</span>::<span class='ident'>set_default</span>;
 
@@ -217,6 +219,8 @@
         <span class='prelude-val'>Ok</span>(())
     }
 }
+
+<span class='macro'>impl_mergeable</span><span class='macro'>!</span>(<span class='ident'>Source</span>, <span class='ident'>metadata</span>, <span class='ident'>subtitle</span>, <span class='ident'>generator</span>, <span class='ident'>logo</span>, <span class='ident'>icon</span>);
 </pre>
 </section>
     <section id='search' class="content hidden"></section>

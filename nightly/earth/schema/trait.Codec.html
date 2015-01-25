@@ -26,7 +26,7 @@
 
     <section class="sidebar">
         <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>schema</a></p><div class='block enum'><h2>Enums</h2><a class='enum ' href='enum.SchemaError.html'>SchemaError</a></div><div class='block trait'><h2>Traits</h2><a class='trait current' href='trait.Codec.html'>Codec</a><a class='trait ' href='trait.DocumentElement.html'>DocumentElement</a><a class='trait ' href='trait.FromSchemaReader.html'>FromSchemaReader</a><a class='trait ' href='trait.Mergeable.html'>Mergeable</a></div>
+        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>schema</a></p><div class='block enum'><h2>Enums</h2><a class='enum ' href='enum.SchemaError.html' title=''>SchemaError</a></div><div class='block trait'><h2>Traits</h2><a class='trait current' href='trait.Codec.html' title=''>Codec</a><a class='trait ' href='trait.DocumentElement.html' title='The root element of the document.'>DocumentElement</a><a class='trait ' href='trait.Entity.html' title=''>Entity</a><a class='trait ' href='trait.FromSchemaReader.html' title=''>FromSchemaReader</a><a class='trait ' href='trait.Mergeable.html' title='This trait is used to merge conflicts between concurrent updates.'>Mergeable</a></div>
     </section>
 
     <nav class="sub">
@@ -44,7 +44,7 @@
 <h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>earth</a>::<wbr><a href='index.html'>schema</a>::<wbr><a class='trait' href=''>Codec</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-55695' href='../../src/earth/schema.rs.html#36-39'>[src]</a></span></h1>
+        </span><a id='src-56195' href='../../src/earth/schema.rs.html#41-44'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait Codec&lt;T&gt; {
     fn <a href='#tymethod.encode' class='fnname'>encode</a>(&amp;self, value: &amp;T, w: &amp;mut <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Writer.html' title='std::io::Writer'>Writer</a>) -&gt; <a class='type' href='../../earth/schema/type.SchemaResult.html' title='earth::schema::SchemaResult'>SchemaResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;;
     fn <a href='#tymethod.decode' class='fnname'>decode</a>(&amp;self, r: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../../earth/schema/type.SchemaResult.html' title='earth::schema::SchemaResult'>SchemaResult</a>&lt;T&gt;;

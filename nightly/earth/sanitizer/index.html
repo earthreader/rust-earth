@@ -26,7 +26,7 @@
 
     <section class="sidebar">
         <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../index.html'>earth</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='../codecs/index.html'>codecs</a><a class='mod ' href='../feed/index.html'>feed</a><a class='mod ' href='../html/index.html'>html</a><a class='mod ' href='../mimetype/index.html'>mimetype</a><a class='mod ' href='../parser/index.html'>parser</a><a class='mod ' href='../repository/index.html'>repository</a><a class='mod current' href='../sanitizer/index.html'>sanitizer</a><a class='mod ' href='../schema/index.html'>schema</a><a class='mod ' href='../stage/index.html'>stage</a><a class='mod ' href='../util/index.html'>util</a></div>
+        <p class='location'><a href='../index.html'>earth</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='../codecs/index.html' title='Provides commonly used codecs to parse RSS-related standard formats.'>codecs</a><a class='mod ' href='../feed/index.html' title='Data structures for feeds.'>feed</a><a class='mod ' href='../html/index.html' title='The adatper to display a given value as an HTML element.'>html</a><a class='mod ' href='../mimetype/index.html' title=''>mimetype</a><a class='mod ' href='../parser/index.html' title='Parsing various RSS formats.'>parser</a><a class='mod ' href='../repository/index.html' title='Abstracts storage backend e.g. filesystem.'>repository</a><a class='mod current' href='../sanitizer/index.html' title='Sanitize HTML tags.'>sanitizer</a><a class='mod ' href='../schema/index.html' title=''>schema</a><a class='mod ' href='../stage/index.html' title=''>stage</a><a class='mod ' href='../util/index.html' title=''>util</a></div>
     </section>
 
     <nav class="sub">
@@ -44,8 +44,9 @@
 <h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>earth</a>::<wbr><a class='mod' href=''>sanitizer</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-52263' href='../../src/earth/sanitizer.rs.html#1-222'>[src]</a></span></h1>
-<h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+        </span><a id='src-52751' href='../../src/earth/sanitizer.rs.html#1-265'>[src]</a></span></h1>
+<div class='docblock'><p>Sanitize HTML tags.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                     <tr>
                         <td><a class='stability Experimental' title='Experimental'></a><a class='struct' href='struct.CleanHtml.html'
@@ -69,19 +70,26 @@
                     <tr>
                         <td><a class='stability Experimental' title='Experimental'></a><a class='fn' href='fn.clean_html.html'
                                title='earth::sanitizer::clean_html'>clean_html</a></td>
-                        <td class='docblock short'></td>
+                        <td class='docblock short'><p>Strip <em>all</em> markup tags from HTML string.
+That means, it simply makes the given HTML document a plain text.</p>
+</td>
                     </tr>
                 
                     <tr>
                         <td><a class='stability Experimental' title='Experimental'></a><a class='fn' href='fn.escape.html'
                                title='earth::sanitizer::escape'>escape</a></td>
-                        <td class='docblock short'></td>
+                        <td class='docblock short'><p>Convert given string to HTML-safe sequences by replacing the characters
+<code>&amp;</code>, <code>&lt;</code> and <code>&gt;</code>.  If the optional <code>flag</code> quote is true, the characters <code>&quot;</code>
+and <code>&#39;</code> are also translated.</p>
+</td>
                     </tr>
                 
                     <tr>
                         <td><a class='stability Experimental' title='Experimental'></a><a class='fn' href='fn.sanitize_html.html'
                                title='earth::sanitizer::sanitize_html'>sanitize_html</a></td>
-                        <td class='docblock short'></td>
+                        <td class='docblock short'><p>Sanitize the given HTML string.  It removes the following tags and
+attributes that are not secure nor useful for RSS reader layout:</p>
+</td>
                     </tr>
                 </table></section>
     <section id='search' class="content hidden"></section>

@@ -113,7 +113,7 @@
 <span class='doccomment'>//! ```</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! If you want to convert the type of values to an HTML element, you can</span>
-<span class='doccomment'>//! implement `std::fmt::String` trait on the type wrapped by this adapter.</span>
+<span class='doccomment'>//! implement `std::fmt::Display` trait on the type wrapped by this adapter.</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! ```</span>
 <span class='doccomment'>//! use earth::html::{ForHtml, ToHtml};</span>
@@ -121,7 +121,7 @@
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! struct Answer(i32);</span>
 <span class='doccomment'>//!</span>
-<span class='doccomment'>//! impl&lt;&#39;a&gt; fmt::String for ForHtml&lt;&#39;a, Answer&gt; {</span>
+<span class='doccomment'>//! impl&lt;&#39;a&gt; fmt::Display for ForHtml&lt;&#39;a, Answer&gt; {</span>
 <span class='doccomment'>//!     fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {</span>
 <span class='doccomment'>//!         write!(f, &quot;&lt;em&gt;{}&lt;/em&gt;&quot;, self.0)</span>
 <span class='doccomment'>//!     }</span>
@@ -152,7 +152,7 @@
     <span class='kw'>fn</span> <span class='ident'>to_html</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='ident'>Self</span><span class='op'>&gt;</span> { <span class='ident'>ForHtml</span> { <span class='ident'>_inner</span>: <span class='self'>self</span> } }
 }
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>ToHtml</span> <span class='kw'>for</span> <span class='ident'>T</span> <span class='kw'>where</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span><span class='op'>&gt;</span>: <span class='ident'>fmt</span>::<span class='ident'>String</span> { }
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span><span class='op'>&gt;</span> <span class='ident'>ToHtml</span> <span class='kw'>for</span> <span class='ident'>T</span> <span class='kw'>where</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span><span class='op'>&gt;</span>: <span class='ident'>fmt</span>::<span class='ident'>Display</span> { }
 </pre>
 </section>
     <section id='search' class="content hidden"></section>

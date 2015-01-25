@@ -164,16 +164,20 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
 </pre><pre class='rust '>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>borrow</span>::<span class='ident'>Cow</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>default</span>::<span class='ident'>Default</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ops</span>::{<span class='ident'>Deref</span>, <span class='ident'>DerefMut</span>};
 
 <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>DateTime</span>, <span class='ident'>FixedOffset</span>};
 
 <span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::{<span class='ident'>DecodeResult</span>, <span class='ident'>XmlElement</span>, <span class='ident'>XmlName</span>};
-<span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>DocumentElement</span>, <span class='ident'>FromSchemaReader</span>, <span class='ident'>Mergeable</span>};
+<span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>DocumentElement</span>, <span class='ident'>Entity</span>, <span class='ident'>FromSchemaReader</span>, <span class='ident'>Mergeable</span>};
 
 <span class='kw'>use</span> <span class='ident'>util</span>::<span class='ident'>set_default</span>;
 
@@ -282,13 +286,15 @@
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>Mergeable</span> <span class='kw'>for</span> <span class='ident'>Entry</span> {
-    <span class='kw'>fn</span> <span class='ident'>merge_entities</span>(<span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>other</span>: <span class='ident'>Entry</span>) <span class='op'>-&gt;</span> <span class='ident'>Entry</span> {
-        <span class='self'>self</span>.<span class='ident'>read</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>read</span>.<span class='ident'>merge_entities</span>(<span class='ident'>other</span>.<span class='ident'>read</span>);
-        <span class='self'>self</span>.<span class='ident'>starred</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>starred</span>.<span class='ident'>merge_entities</span>(<span class='ident'>other</span>.<span class='ident'>starred</span>);
-        <span class='self'>self</span>
+<span class='kw'>impl</span> <span class='ident'>Entity</span> <span class='kw'>for</span> <span class='ident'>Entry</span> {
+    <span class='kw'>type</span> <span class='ident'>OwnedId</span> <span class='op'>=</span> <span class='ident'>String</span>;
+    <span class='kw'>type</span> <span class='ident'>BorrowedId</span> <span class='op'>=</span> <span class='ident'>str</span>;
+    <span class='kw'>fn</span> <span class='ident'>entity_id</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Cow</span><span class='op'>&lt;</span><span class='ident'>String</span>, <span class='ident'>str</span><span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>metadata</span>.<span class='ident'>entity_id</span>()
     }
 }
+
+<span class='macro'>impl_mergeable</span><span class='macro'>!</span>(<span class='ident'>Entry</span>, <span class='ident'>read</span>, <span class='ident'>starred</span>);
 </pre>
 </section>
     <section id='search' class="content hidden"></section>

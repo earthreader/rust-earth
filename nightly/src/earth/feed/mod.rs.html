@@ -163,17 +163,17 @@
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>source</span>::<span class='ident'>Source</span>;
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>text</span>::<span class='ident'>Text</span>;
 
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>category</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>content</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>entry</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>feed</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>generator</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>link</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>mark</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>metadata</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>person</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>source</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>text</span>;
+<span class='kw'>mod</span> <span class='ident'>category</span>;
+<span class='kw'>mod</span> <span class='ident'>content</span>;
+<span class='kw'>mod</span> <span class='ident'>entry</span>;
+<span class='kw'>mod</span> <span class='ident'>feed</span>;
+<span class='kw'>mod</span> <span class='ident'>generator</span>;
+<span class='kw'>mod</span> <span class='ident'>link</span>;
+<span class='kw'>mod</span> <span class='ident'>mark</span>;
+<span class='kw'>mod</span> <span class='ident'>metadata</span>;
+<span class='kw'>mod</span> <span class='ident'>person</span>;
+<span class='kw'>mod</span> <span class='ident'>source</span>;
+<span class='kw'>mod</span> <span class='ident'>text</span>;
 
 
 <span class='doccomment'>/// The XML namespace name used for Atom (RFC 4287).</span>
@@ -206,7 +206,7 @@
     <span class='doccomment'>/// assert_eq!(format!(&quot;{}&quot;, html.sanitized_html(None)), &quot;&lt;p&gt;Hello&lt;/p&gt;&quot;);</span>
     <span class='doccomment'>/// ```</span>
     <span class='kw'>fn</span> <span class='ident'>sanitized_html</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>, <span class='ident'>base_uri</span>: <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span><span class='op'>&gt;</span>) <span class='op'>-&gt;</span>
-        <span class='ident'>Box</span><span class='op'>&lt;</span><span class='ident'>fmt</span>::<span class='ident'>String</span> <span class='op'>+</span> <span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>;
+        <span class='ident'>Box</span><span class='op'>&lt;</span><span class='ident'>fmt</span>::<span class='ident'>Display</span> <span class='op'>+</span> <span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>;
 }
 
 <span class='kw'>fn</span> <span class='ident'>parse_datetime</span><span class='op'>&lt;</span><span class='ident'>B</span>: <span class='ident'>Buffer</span><span class='op'>&gt;</span>(<span class='ident'>element</span>: <span class='ident'>XmlElement</span><span class='op'>&lt;</span><span class='ident'>B</span><span class='op'>&gt;</span>)

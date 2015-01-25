@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `read_feed` fn in crate `earth`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, read_feed">
+    <meta name="description" content="API documentation for the Rust `replace` fn in crate `earth`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, replace">
 
-    <title>earth::feed::feed::read_feed - Rust</title>
+    <title>earth::util::replace - Rust</title>
 
-    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
 
     <link rel="shortcut icon" href="http://earthreader.org/favicon.ico">
     
@@ -25,8 +25,8 @@
     
 
     <section class="sidebar">
-        <a href='../../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>feed</a>::<wbr><a href='index.html'>feed</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.Feed.html'>Feed</a></div><div class='block fn'><h2>Functions</h2><a class='fn current' href='fn.read_feed.html'>read_feed</a></div>
+        <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
+        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>util</a></p><div class='block fn'><h2>Functions</h2><a class='fn ' href='fn.get_mut_or_set.html' title=''>get_mut_or_set</a><a class='fn ' href='fn.merge_vec.html' title=''>merge_vec</a><a class='fn current' href='fn.replace.html' title=''>replace</a><a class='fn ' href='fn.set_default.html' title=''>set_default</a></div>
     </section>
 
     <nav class="sub">
@@ -41,11 +41,11 @@
     </nav>
 
     <section id='main' class="content fn">
-<h1 class='fqn'><span class='in-band'>Function <a href='../../index.html'>earth</a>::<wbr><a href='../index.html'>feed</a>::<wbr><a href='index.html'>feed</a>::<wbr><a class='fn' href=''>read_feed</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
+<h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>earth</a>::<wbr><a href='index.html'>util</a>::<wbr><a class='fn' href=''>replace</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-9642' href='../../../src/earth/feed/feed.rs.html#59-71'>[src]</a></span></h1>
-<pre class='rust fn'>pub fn read_feed&lt;B: <a class='trait' href='http://doc.rust-lang.org/nightly/std/io/trait.Buffer.html' title='std::io::Buffer'>Buffer</a>&gt;(buf: B) -&gt; <a class='struct' href='../../../earth/feed/feed/struct.Feed.html' title='earth::feed::feed::Feed'>Feed</a></pre></section>
+        </span><a id='src-57594' href='../../src/earth/util.rs.html#23-26'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn replace&lt;T&gt;(opt: &amp;mut <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;T&gt;, target: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;T&gt;)</pre></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
@@ -84,13 +84,13 @@
     
 
     <script>
-        window.rootPath = "../../../";
+        window.rootPath = "../../";
         window.currentCrate = "earth";
         window.playgroundUrl = "";
     </script>
-    <script src="../../../jquery.js"></script>
-    <script src="../../../main.js"></script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
     
-    <script async src="../../../search-index.js"></script>
+    <script async src="../../search-index.js"></script>
 </body>
 </html>

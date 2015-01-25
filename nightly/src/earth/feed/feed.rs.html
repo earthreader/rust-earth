@@ -217,6 +217,10 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class='rust '>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 
@@ -225,12 +229,9 @@
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ops</span>::{<span class='ident'>Deref</span>, <span class='ident'>DerefMut</span>};
 
 <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>DateTime</span>, <span class='ident'>FixedOffset</span>};
-<span class='kw'>use</span> <span class='ident'>xml</span>;
 
 <span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::{<span class='ident'>DecodeResult</span>, <span class='ident'>XmlElement</span>, <span class='ident'>XmlName</span>};
-<span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::<span class='ident'>NestedEventReader</span>;
-<span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::<span class='ident'>NestedEvent</span>::<span class='ident'>Nested</span>;
-<span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>DocumentElement</span>, <span class='ident'>FromSchemaReader</span>};
+<span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>DocumentElement</span>, <span class='ident'>FromSchemaReader</span>, <span class='ident'>Mergeable</span>};
 
 <span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>ATOM_XMLNS</span>, <span class='ident'>Entry</span>, <span class='ident'>Source</span>, <span class='ident'>Text</span>};
 
@@ -276,21 +277,6 @@
     }
 }
 
-<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>read_feed</span><span class='op'>&lt;</span><span class='ident'>B</span>: <span class='ident'>Buffer</span><span class='op'>&gt;</span>(<span class='ident'>buf</span>: <span class='ident'>B</span>) <span class='op'>-&gt;</span> <span class='ident'>Feed</span> {
-    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>parser</span> <span class='op'>=</span> <span class='ident'>xml</span>::<span class='ident'>EventReader</span>::<span class='ident'>new</span>(<span class='ident'>buf</span>);
-    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>events</span> <span class='op'>=</span> <span class='ident'>NestedEventReader</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>parser</span>);
-    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>feed</span>: <span class='ident'>Feed</span> <span class='op'>=</span> <span class='ident'>Default</span>::<span class='ident'>default</span>();
-    <span class='macro'>for_each</span><span class='macro'>!</span>(<span class='ident'>event</span> <span class='kw'>in</span> <span class='ident'>events</span>.<span class='ident'>next</span>() {
-        <span class='kw'>match</span> <span class='ident'>event</span> {
-            <span class='ident'>Nested</span> { <span class='ident'>name</span>: _, <span class='ident'>element</span> } <span class='op'>=&gt;</span>
-                <span class='ident'>FromSchemaReader</span>::<span class='ident'>read_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>feed</span>, <span class='ident'>element</span>).<span class='ident'>unwrap</span>(),
-            _ <span class='op'>=&gt;</span> { }
-        }
-    });
-    <span class='ident'>feed</span>
-}
-
-
 <span class='kw'>impl</span> <span class='ident'>DocumentElement</span> <span class='kw'>for</span> <span class='ident'>Feed</span> {
     <span class='kw'>fn</span> <span class='ident'>tag</span>() <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;static</span> <span class='ident'>str</span> { <span class='string'>&quot;feed&quot;</span> }
     <span class='kw'>fn</span> <span class='ident'>xmlns</span>() <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='lifetime'>&#39;static</span> <span class='ident'>str</span><span class='op'>&gt;</span> { <span class='prelude-val'>Some</span>(<span class='ident'>ATOM_XMLNS</span>) }
@@ -311,14 +297,22 @@
     }
 }
 
+<span class='macro'>impl_mergeable</span><span class='macro'>!</span>(<span class='ident'>Feed</span>, <span class='ident'>source</span>, <span class='ident'>entries</span>);
+
 
 <span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
 <span class='kw'>mod</span> <span class='ident'>test</span> {
-    <span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>Feed</span>, <span class='ident'>read_feed</span>};
+    <span class='kw'>use</span> <span class='ident'>super</span>::<span class='ident'>Feed</span>;
+
+    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>default</span>::<span class='ident'>Default</span>;
 
     <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>Offset</span>, <span class='ident'>UTC</span>};
-    
+    <span class='kw'>use</span> <span class='ident'>xml</span>;
+
     <span class='kw'>use</span> <span class='ident'>feed</span>::{<span class='ident'>Link</span>, <span class='ident'>Person</span>, <span class='ident'>Text</span>};
+    <span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::<span class='ident'>NestedEventReader</span>;
+    <span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::<span class='ident'>NestedEvent</span>::<span class='ident'>Nested</span>;
+    <span class='kw'>use</span> <span class='ident'>schema</span>::<span class='ident'>FromSchemaReader</span>;
 
     <span class='kw'>fn</span> <span class='ident'>fx_feed</span>() <span class='op'>-&gt;</span> <span class='ident'>Feed</span> {
         <span class='ident'>read_feed</span>(<span class='string'>r##&quot;
@@ -352,6 +346,20 @@
         &lt;/feed&gt;
         &quot;##</span> <span class='comment'>// &quot;</span>
         .<span class='ident'>as_bytes</span>())
+    }
+
+    <span class='kw'>fn</span> <span class='ident'>read_feed</span><span class='op'>&lt;</span><span class='ident'>B</span>: <span class='ident'>Buffer</span><span class='op'>&gt;</span>(<span class='ident'>buf</span>: <span class='ident'>B</span>) <span class='op'>-&gt;</span> <span class='ident'>Feed</span> {
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>parser</span> <span class='op'>=</span> <span class='ident'>xml</span>::<span class='ident'>EventReader</span>::<span class='ident'>new</span>(<span class='ident'>buf</span>);
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>events</span> <span class='op'>=</span> <span class='ident'>NestedEventReader</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>parser</span>);
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>feed</span>: <span class='ident'>Feed</span> <span class='op'>=</span> <span class='ident'>Default</span>::<span class='ident'>default</span>();
+        <span class='macro'>for_each</span><span class='macro'>!</span>(<span class='ident'>event</span> <span class='kw'>in</span> <span class='ident'>events</span>.<span class='ident'>next</span>() {
+            <span class='kw'>match</span> <span class='ident'>event</span> {
+                <span class='ident'>Nested</span> { <span class='ident'>name</span>: _, <span class='ident'>element</span> } <span class='op'>=&gt;</span>
+                    <span class='ident'>FromSchemaReader</span>::<span class='ident'>read_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>feed</span>, <span class='ident'>element</span>).<span class='ident'>unwrap</span>(),
+                _ <span class='op'>=&gt;</span> { }
+            }
+        });
+        <span class='ident'>feed</span>
     }
 
     <span class='attribute'>#[<span class='ident'>test</span>]</span>

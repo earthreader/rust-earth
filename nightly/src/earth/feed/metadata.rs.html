@@ -167,18 +167,31 @@
 <span id="125">125</span>
 <span id="126">126</span>
 <span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
 </pre><pre class='rust '>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>borrow</span>::<span class='ident'>Cow</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>default</span>::<span class='ident'>Default</span>;
 
 <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>DateTime</span>, <span class='ident'>FixedOffset</span>};
 
 <span class='kw'>use</span> <span class='ident'>parser</span>::<span class='ident'>base</span>::{<span class='ident'>DecodeResult</span>, <span class='ident'>XmlElement</span>, <span class='ident'>XmlName</span>};
-<span class='kw'>use</span> <span class='ident'>schema</span>::<span class='ident'>FromSchemaReader</span>;
+<span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>Entity</span>, <span class='ident'>FromSchemaReader</span>, <span class='ident'>Mergeable</span>};
 <span class='kw'>use</span> <span class='ident'>util</span>::<span class='ident'>set_default</span>;
 
-<span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>ATOM_XMLNS</span>, <span class='ident'>Category</span>, <span class='ident'>LinkList</span>, <span class='ident'>Person</span>, <span class='ident'>Text</span>, <span class='ident'>parse_datetime</span>};
+<span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>ATOM_XMLNS</span>, <span class='ident'>Category</span>, <span class='ident'>Link</span>, <span class='ident'>Person</span>, <span class='ident'>Text</span>, <span class='ident'>parse_datetime</span>};
 
 <span class='doccomment'>/// Common metadata shared by `Source`, `Entry`, and `Feed`.</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Metadata</span> {
@@ -193,7 +206,7 @@
     <span class='doccomment'>/// The list of :class:`Link` objects that define a reference from an entry</span>
     <span class='doccomment'>/// or feed to a web resource.  It corresponds to `atom:link` element of</span>
     <span class='doccomment'>/// :rfc:`4287#section-4.2.7` (section 4.2.7).</span>
-    <span class='kw'>pub</span> <span class='ident'>links</span>: <span class='ident'>LinkList</span>,
+    <span class='kw'>pub</span> <span class='ident'>links</span>: <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>Link</span><span class='op'>&gt;</span>,
 
     <span class='doccomment'>/// The datetime value with a fixed timezone offset, indicating the most</span>
     <span class='doccomment'>/// recent instant in time when the entry was modified in a way the</span>
@@ -295,6 +308,17 @@
         <span class='prelude-val'>Ok</span>(())
     }
 }
+
+<span class='kw'>impl</span> <span class='ident'>Entity</span> <span class='kw'>for</span> <span class='ident'>Metadata</span> {
+    <span class='kw'>type</span> <span class='ident'>OwnedId</span> <span class='op'>=</span> <span class='ident'>String</span>;
+    <span class='kw'>type</span> <span class='ident'>BorrowedId</span> <span class='op'>=</span> <span class='ident'>str</span>;
+    <span class='kw'>fn</span> <span class='ident'>entity_id</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Cow</span><span class='op'>&lt;</span><span class='ident'>String</span>, <span class='ident'>str</span><span class='op'>&gt;</span> {
+        <span class='ident'>Cow</span>::<span class='ident'>Borrowed</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>.<span class='ident'>id</span>[])
+    }
+}
+
+<span class='macro'>impl_mergeable</span><span class='macro'>!</span>(<span class='ident'>Metadata</span>, <span class='ident'>id</span>, <span class='ident'>title</span>, <span class='ident'>links</span>, <span class='ident'>updated_at</span>, <span class='ident'>authors</span>,
+                          <span class='ident'>contributors</span>, <span class='ident'>categories</span>, <span class='ident'>rights</span>);
 </pre>
 </section>
     <section id='search' class="content hidden"></section>

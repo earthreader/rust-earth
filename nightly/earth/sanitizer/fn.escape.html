@@ -26,7 +26,7 @@
 
     <section class="sidebar">
         <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>sanitizer</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.CleanHtml.html'>CleanHtml</a><a class='struct ' href='struct.Escape.html'>Escape</a><a class='struct ' href='struct.SanitizeHtml.html'>SanitizeHtml</a></div><div class='block fn'><h2>Functions</h2><a class='fn ' href='fn.clean_html.html'>clean_html</a><a class='fn current' href='fn.escape.html'>escape</a><a class='fn ' href='fn.sanitize_html.html'>sanitize_html</a></div>
+        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>sanitizer</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.CleanHtml.html' title=''>CleanHtml</a><a class='struct ' href='struct.Escape.html' title=''>Escape</a><a class='struct ' href='struct.SanitizeHtml.html' title=''>SanitizeHtml</a></div><div class='block fn'><h2>Functions</h2><a class='fn ' href='fn.clean_html.html' title='Strip *all* markup tags from HTML string. That means, it simply makes the given HTML document a plain text.'>clean_html</a><a class='fn current' href='fn.escape.html' title='Convert given string to HTML-safe sequences by replacing the characters `&amp;`, `&lt;` and `&gt;`.  If the optional `flag` quote is true, the characters `&quot;` and `&#39;` are also translated.'>escape</a><a class='fn ' href='fn.sanitize_html.html' title='Sanitize the given HTML string.  It removes the following tags and attributes that are not secure nor useful for RSS reader layout:'>sanitize_html</a></div>
     </section>
 
     <nav class="sub">
@@ -44,8 +44,20 @@
 <h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>earth</a>::<wbr><a href='index.html'>sanitizer</a>::<wbr><a class='fn' href=''>escape</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-52293' href='../../src/earth/sanitizer.rs.html#16-18'>[src]</a></span></h1>
-<pre class='rust fn'>pub fn escape&lt;'a&gt;(text: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, quote: <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>) -&gt; <a class='struct' href='../../earth/sanitizer/struct.Escape.html' title='earth::sanitizer::Escape'>Escape</a>&lt;'a&gt;</pre></section>
+        </span><a id='src-52781' href='../../src/earth/sanitizer.rs.html#30-32'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn escape&lt;'a&gt;(text: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, quote: <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>) -&gt; <a class='struct' href='../../earth/sanitizer/struct.Escape.html' title='earth::sanitizer::Escape'>Escape</a>&lt;'a&gt;</pre><div class='docblock'><p>Convert given string to HTML-safe sequences by replacing the characters
+<code>&amp;</code>, <code>&lt;</code> and <code>&gt;</code>.  If the optional <code>flag</code> quote is true, the characters <code>&quot;</code>
+and <code>&#39;</code> are also translated.</p>
+
+<h3 id="example" class='section-header'><a
+                           href="#example">Example</a></h3><pre id='rust-example-rendered' class='rust '>
+<span class='kw'>let</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='string'>r#&quot;&lt;a href=&quot;http://example.org/?a=1&amp;b=2&quot;&gt;Example&lt;/a&gt;&quot;#</span>;
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>escape</span>(<span class='ident'>s</span>, <span class='boolval'>false</span>)),
+           <span class='string'>r#&quot;&amp;lt;a href=&quot;http://example.org/?a=1&amp;amp;b=2&quot;&amp;gt;Example&amp;lt;/a&amp;gt;&quot;#</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>escape</span>(<span class='ident'>s</span>, <span class='boolval'>true</span>)),
+           <span class='string'>r#&quot;&amp;lt;a href=&amp;quot;http://example.org/?a=1&amp;amp;b=2&amp;quot;&amp;gt;Example&amp;lt;/a&amp;gt;&quot;#</span>);
+</pre>
+</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>

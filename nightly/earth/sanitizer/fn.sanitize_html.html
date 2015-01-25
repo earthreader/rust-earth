@@ -26,7 +26,7 @@
 
     <section class="sidebar">
         <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>sanitizer</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.CleanHtml.html'>CleanHtml</a><a class='struct ' href='struct.Escape.html'>Escape</a><a class='struct ' href='struct.SanitizeHtml.html'>SanitizeHtml</a></div><div class='block fn'><h2>Functions</h2><a class='fn ' href='fn.clean_html.html'>clean_html</a><a class='fn ' href='fn.escape.html'>escape</a><a class='fn current' href='fn.sanitize_html.html'>sanitize_html</a></div>
+        <p class='location'><a href='../index.html'>earth</a>::<wbr><a href='index.html'>sanitizer</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.CleanHtml.html' title=''>CleanHtml</a><a class='struct ' href='struct.Escape.html' title=''>Escape</a><a class='struct ' href='struct.SanitizeHtml.html' title=''>SanitizeHtml</a></div><div class='block fn'><h2>Functions</h2><a class='fn ' href='fn.clean_html.html' title='Strip *all* markup tags from HTML string. That means, it simply makes the given HTML document a plain text.'>clean_html</a><a class='fn ' href='fn.escape.html' title='Convert given string to HTML-safe sequences by replacing the characters `&amp;`, `&lt;` and `&gt;`.  If the optional `flag` quote is true, the characters `&quot;` and `&#39;` are also translated.'>escape</a><a class='fn current' href='fn.sanitize_html.html' title='Sanitize the given HTML string.  It removes the following tags and attributes that are not secure nor useful for RSS reader layout:'>sanitize_html</a></div>
     </section>
 
     <nav class="sub">
@@ -44,8 +44,27 @@
 <h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>earth</a>::<wbr><a href='index.html'>sanitizer</a>::<wbr><a class='fn' href=''>sanitize_html</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-52336' href='../../src/earth/sanitizer.rs.html#24-28'>[src]</a></span></h1>
-<pre class='rust fn'>pub fn sanitize_html&lt;'a&gt;(html: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, base_uri: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;) -&gt; <a class='struct' href='../../earth/sanitizer/struct.SanitizeHtml.html' title='earth::sanitizer::SanitizeHtml'>SanitizeHtml</a>&lt;'a&gt;</pre></section>
+        </span><a id='src-52824' href='../../src/earth/sanitizer.rs.html#67-71'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn sanitize_html&lt;'a&gt;(html: &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>, base_uri: <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;) -&gt; <a class='struct' href='../../earth/sanitizer/struct.SanitizeHtml.html' title='earth::sanitizer::SanitizeHtml'>SanitizeHtml</a>&lt;'a&gt;</pre><div class='docblock'><p>Sanitize the given HTML string.  It removes the following tags and
+attributes that are not secure nor useful for RSS reader layout:</p>
+
+<ul>
+<li><code>&lt;script&gt;</code> tags</li>
+<li><code>display: none;</code> styles</li>
+<li>JavaScript event attributes e.g. <code>onclick</code>, <code>onload</code></li>
+<li><code>href</code> attributes that start with <code>javascript:</code>, <code>jscript:</code>,
+<code>livescript:</code>, <code>vbscript:</code>, <code>data:</code>, <code>about:</code>, or <code>mocha:</code>.</li>
+</ul>
+
+<p>Also, it rebases all links on the <code>base_uri</code> if it&#39;s given.</p>
+
+<h3 id="example" class='section-header'><a
+                           href="#example">Example</a></h3><pre id='rust-example-rendered' class='rust '>
+<span class='kw'>let</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='string'>r#&quot;&lt;a href=&quot;a/b/c&quot;&gt;Example&lt;/a&gt;&quot;#</span>;
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>sanitize_html</span>(<span class='ident'>s</span>, <span class='prelude-val'>Some</span>(<span class='string'>&quot;http://example.org/&quot;</span>))),
+           <span class='string'>r#&quot;&lt;a href=&quot;http://example.org/a/b/c&quot;&gt;Example&lt;/a&gt;&quot;#</span>);
+</pre>
+</div></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>

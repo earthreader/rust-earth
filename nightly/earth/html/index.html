@@ -26,7 +26,7 @@
 
     <section class="sidebar">
         <a href='../../earth/index.html'><img src='http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg' alt='' width='100'></a>
-        <p class='location'><a href='../index.html'>earth</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='../codecs/index.html'>codecs</a><a class='mod ' href='../feed/index.html'>feed</a><a class='mod current' href='../html/index.html'>html</a><a class='mod ' href='../mimetype/index.html'>mimetype</a><a class='mod ' href='../parser/index.html'>parser</a><a class='mod ' href='../repository/index.html'>repository</a><a class='mod ' href='../sanitizer/index.html'>sanitizer</a><a class='mod ' href='../schema/index.html'>schema</a><a class='mod ' href='../stage/index.html'>stage</a><a class='mod ' href='../util/index.html'>util</a></div>
+        <p class='location'><a href='../index.html'>earth</a></p><div class='block mod'><h2>Modules</h2><a class='mod ' href='../codecs/index.html' title='Provides commonly used codecs to parse RSS-related standard formats.'>codecs</a><a class='mod ' href='../feed/index.html' title='Data structures for feeds.'>feed</a><a class='mod current' href='../html/index.html' title='The adatper to display a given value as an HTML element.'>html</a><a class='mod ' href='../mimetype/index.html' title=''>mimetype</a><a class='mod ' href='../parser/index.html' title='Parsing various RSS formats.'>parser</a><a class='mod ' href='../repository/index.html' title='Abstracts storage backend e.g. filesystem.'>repository</a><a class='mod ' href='../sanitizer/index.html' title='Sanitize HTML tags.'>sanitizer</a><a class='mod ' href='../schema/index.html' title=''>schema</a><a class='mod ' href='../stage/index.html' title=''>stage</a><a class='mod ' href='../util/index.html' title=''>util</a></div>
     </section>
 
     <nav class="sub">
@@ -44,7 +44,7 @@
 <h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>earth</a>::<wbr><a class='mod' href=''>html</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-17247' href='../../src/earth/html.rs.html#1-56'>[src]</a></span></h1>
+        </span><a id='src-17454' href='../../src/earth/html.rs.html#1-56'>[src]</a></span></h1>
 <div class='docblock'><p>The adatper to display a given value as an HTML element.</p>
 
 <h2 id="example" class='section-header'><a
@@ -59,14 +59,14 @@
 </pre>
 
 <p>If you want to convert the type of values to an HTML element, you can
-implement <code>std::fmt::String</code> trait on the type wrapped by this adapter.</p>
+implement <code>std::fmt::Display</code> trait on the type wrapped by this adapter.</p>
 <pre id='rust-example-rendered' class='rust '>
 <span class='kw'>use</span> <span class='ident'>earth</span>::<span class='ident'>html</span>::{<span class='ident'>ForHtml</span>, <span class='ident'>ToHtml</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>fmt</span>;
 
 <span class='kw'>struct</span> <span class='ident'>Answer</span>(<span class='ident'>i32</span>);
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> <span class='ident'>fmt</span>::<span class='ident'>String</span> <span class='kw'>for</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>Answer</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> <span class='ident'>fmt</span>::<span class='ident'>Display</span> <span class='kw'>for</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>Answer</span><span class='op'>&gt;</span> {
     <span class='kw'>fn</span> <span class='ident'>fmt</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>f</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>fmt</span>::<span class='ident'>Formatter</span>) <span class='op'>-&gt;</span> <span class='ident'>fmt</span>::<span class='prelude-ty'>Result</span> {
         <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;&lt;em&gt;{}&lt;/em&gt;&quot;</span>, <span class='self'>self</span>.<span class='number'>0</span>)
     }
