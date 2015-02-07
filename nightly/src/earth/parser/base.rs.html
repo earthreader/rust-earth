@@ -360,6 +360,7 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
+<span id="321">321</span>
 </pre><pre class='rust '>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 
@@ -377,6 +378,7 @@
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>xml</span>::<span class='ident'>namespace</span>::<span class='ident'>Namespace</span> <span class='kw'>as</span> <span class='ident'>XmlNamespace</span>;
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>events</span>::<span class='ident'>NestedEvent</span>;
 
+<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>DecodeError</span> {
     <span class='ident'>XmlError</span>(<span class='ident'>xml</span>::<span class='ident'>common</span>::<span class='ident'>Error</span>),
     <span class='ident'>UnexpectedEvent</span> { <span class='ident'>event</span>: <span class='ident'>xml</span>::<span class='ident'>reader</span>::<span class='ident'>events</span>::<span class='ident'>XmlEvent</span>, <span class='ident'>depth</span>: <span class='ident'>usize</span> },

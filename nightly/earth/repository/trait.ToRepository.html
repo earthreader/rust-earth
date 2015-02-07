@@ -41,27 +41,27 @@
     </nav>
 
     <section id='main' class="content trait">
-<h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>earth</a>::<wbr><a href='index.html'>repository</a>::<wbr><a class='trait' href=''>ToRepository</a><wbr><a class='stability Unstable' title=''>Unstable</a></span><span class='out-of-band'><span id='render-detail'>
+<h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>earth</a>::<wbr><a href='index.html'>repository</a>::<wbr><a class='trait' href=''>ToRepository</a><wbr></span><span class='out-of-band'><span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-52592' href='../../src/earth/repository/mod.rs.html#149-160'>[src]</a></span></h1>
+        </span><a id='src-53176' href='../../src/earth/repository/mod.rs.html#149-160'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait ToRepository&lt;R: <a class='trait' href='../../earth/repository/trait.Repository.html' title='earth::repository::Repository'>Repository</a>&gt; {
     fn <a href='#tymethod.to_repo' class='fnname'>to_repo</a>(&amp;self) -&gt; <a class='type' href='../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;R&gt;;
     fn <a href='#tymethod.from_repo' class='fnname'>from_repo</a>(repo: &amp;R, scheme: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; Self;
 }</pre>
             <h2 id='required-methods'>Required Methods</h2>
             <div class='methods'>
-        <h3 id='tymethod.to_repo' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#tymethod.to_repo' class='fnname'>to_repo</a>(&amp;self) -&gt; <a class='type' href='../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;R&gt;</code></h3><div class='docblock'><p>Create a new instance of the repository from itself.
+        <h3 id='tymethod.to_repo' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#tymethod.to_repo' class='fnname'>to_repo</a>(&amp;self) -&gt; <a class='type' href='../../earth/repository/type.RepositoryResult.html' title='earth::repository::RepositoryResult'>RepositoryResult</a>&lt;R&gt;</code></h3><div class='docblock'><p>Create a new instance of the repository from itself.
 It may be used for configuring the repository in plain text
 e.g. <code>*.ini</code>.</p>
-</div><h3 id='tymethod.from_repo' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#tymethod.from_repo' class='fnname'>from_repo</a>(repo: &amp;R, scheme: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; Self</code></h3><div class='docblock'><p>Generate a value that <code>to_repo()</code> can accept.
+</div><h3 id='tymethod.from_repo' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#tymethod.from_repo' class='fnname'>from_repo</a>(repo: &amp;R, scheme: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; Self</code></h3><div class='docblock'><p>Generate a value that <code>to_repo()</code> can accept.
 It&#39;s used for configuring the repository in plain text
 e.g. <code>*.ini</code>.  URL <code>scheme</code> is determined by caller,
 and given through argument.</p>
 </div></div>
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
-    <li><a class='stability Unstable' title='Unstable'></a><code>impl <a class='trait' href='../../earth/repository/trait.ToRepository.html' title='earth::repository::ToRepository'>ToRepository</a>&lt;<a class='struct' href='../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a>&gt; for Url</code></li>
+    <li><a class='stability Unmarked' title='No stability level'></a><code>impl <a class='trait' href='../../earth/repository/trait.ToRepository.html' title='earth::repository::ToRepository'>ToRepository</a>&lt;<a class='struct' href='../../earth/repository/fs/struct.FileSystemRepository.html' title='earth::repository::fs::FileSystemRepository'>FileSystemRepository</a>&gt; for Url</code></li>
 </ul><script type="text/javascript" async
                               src="../../implementors/earth/repository/trait.ToRepository.js">
                       </script></section>

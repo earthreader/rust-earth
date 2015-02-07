@@ -241,7 +241,7 @@
 <span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>FromSchemaReader</span>};
 
 <span class='doccomment'>/// Content construct defined in :rfc:`4287#section-4.1.3` (section 4.1.3).</span>
-<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
+<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>, <span class='ident'>Debug</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Content</span> {
     <span class='ident'>mimetype</span>: <span class='ident'>MimeType</span>,
     <span class='ident'>body</span>: <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span>,

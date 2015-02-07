@@ -97,7 +97,7 @@
 <span id="55">55</span>
 <span id="56">56</span>
 </pre><pre class='rust '>
-<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>experimental</span>]</span>
+<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 <span class='doccomment'>//! The adatper to display a given value as an HTML element.</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! ## Example</span>
@@ -138,7 +138,7 @@
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>fmt</span>;
 
 
-<span class='attribute'>#[<span class='ident'>experimental</span>]</span>
+<span class='attribute'>#[<span class='ident'>unstable</span>]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span>: ?<span class='ident'>Sized</span> <span class='op'>+</span> <span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> { <span class='ident'>_inner</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>T</span> }
 
 <span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span>: ?<span class='ident'>Sized</span><span class='op'>&gt;</span> <span class='ident'>Deref</span> <span class='kw'>for</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='ident'>T</span><span class='op'>&gt;</span> {
@@ -147,7 +147,7 @@
 }
 
 
-<span class='attribute'>#[<span class='ident'>experimental</span>]</span>
+<span class='attribute'>#[<span class='ident'>unstable</span>]</span>
 <span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>ToHtml</span> {
     <span class='kw'>fn</span> <span class='ident'>to_html</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>ForHtml</span><span class='op'>&lt;</span><span class='ident'>Self</span><span class='op'>&gt;</span> { <span class='ident'>ForHtml</span> { <span class='ident'>_inner</span>: <span class='self'>self</span> } }
 }

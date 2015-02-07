@@ -90,7 +90,7 @@
        <span class='ident'>html_favicon_url</span> <span class='op'>=</span> <span class='string'>&quot;http://earthreader.org/favicon.ico&quot;</span>,
        <span class='ident'>html_root_url</span> <span class='op'>=</span> <span class='string'>&quot;http://earthreader.org/rust-earth/&quot;</span>)]</span>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>plugin</span>, <span class='ident'>unboxed_closures</span>, <span class='ident'>unsafe_destructor</span>)]</span>
-<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>allow</span>(<span class='ident'>unstable</span>)]</span>
+<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>collections</span>, <span class='ident'>core</span>, <span class='ident'>hash</span>, <span class='ident'>io</span>, <span class='ident'>path</span>, <span class='ident'>std_misc</span>)]</span>
 <span class='doccomment'>//! **rust-earth** is an alternative library of [libearth][], the shared common</span>
 <span class='doccomment'>//! library for various [Earth Reader][] apps.</span>
 <span class='doccomment'>//!</span>
@@ -108,7 +108,7 @@
 <span class='attribute'>#[<span class='ident'>plugin</span>]</span> <span class='attribute'>#[<span class='ident'>no_link</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>regex_macros</span>;
 <span class='attribute'>#[<span class='ident'>plugin</span>]</span> <span class='attribute'>#[<span class='ident'>no_link</span>]</span> <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>string_cache_macros</span>;
 
-<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>serialize</span>;
+<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='string'>&quot;rustc-serialize&quot;</span> <span class='kw'>as</span> <span class='ident'>serialize</span>;
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>regex</span>;
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>time</span>;
 

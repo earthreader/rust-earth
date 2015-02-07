@@ -279,6 +279,20 @@
 <span id="237">237</span>
 <span id="238">238</span>
 <span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
 </pre><pre class='rust '>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 <span class='doccomment'>//! Provides commonly used codecs to parse RSS-related standard formats.</span>
@@ -311,10 +325,19 @@
 <span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>parse_field</span> {
     (<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>caps</span>:<span class='ident'>expr</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>:<span class='ident'>expr</span>) <span class='op'>=&gt;</span> (
         {
-            <span class='kw'>let</span> <span class='ident'>value</span> <span class='op'>=</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>caps</span>.<span class='ident'>name</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>);
-            <span class='macro'>try_opt</span><span class='macro'>!</span>(<span class='ident'>value</span>.<span class='ident'>and_then</span>(<span class='ident'>FromStr</span>::<span class='ident'>from_str</span>),
-                     <span class='macro'>concat</span><span class='macro'>!</span>(<span class='string'>&quot;invalid value for &quot;</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>),
-                     <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='ident'>value</span>))
+            <span class='kw'>match</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>caps</span>.<span class='ident'>name</span>(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>).<span class='ident'>map</span>(<span class='ident'>FromStr</span>::<span class='ident'>from_str</span>) {
+                <span class='prelude-val'>Some</span>(<span class='prelude-val'>Ok</span>(<span class='ident'>v</span>)) <span class='op'>=&gt;</span> <span class='ident'>v</span>,
+                <span class='prelude-val'>Some</span>(<span class='prelude-val'>Err</span>(<span class='ident'>e</span>)) <span class='op'>=&gt;</span> {
+                    <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>DecodeError</span>(
+                        <span class='macro'>concat</span><span class='macro'>!</span>(<span class='string'>&quot;invalid value for &quot;</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>),
+                        <span class='prelude-val'>Some</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>e</span>))));
+                }
+                <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> {
+                    <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>DecodeError</span>(
+                        <span class='macro'>concat</span><span class='macro'>!</span>(<span class='string'>&quot;invalid value for &quot;</span>, <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>field</span>),
+                        <span class='prelude-val'>None</span>));
+                }
+            }
         }
     )
 }
@@ -361,8 +384,8 @@
             <span class='prelude-val'>Some</span>(<span class='ident'>c</span>) <span class='op'>=&gt;</span> <span class='ident'>c</span>,
         };
         <span class='kw'>let</span> <span class='ident'>offset</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>caps</span>.<span class='ident'>name</span>(<span class='string'>&quot;tz_offset&quot;</span>).<span class='ident'>map_or</span>(<span class='boolval'>false</span>, <span class='op'>|</span><span class='ident'>x</span><span class='op'>|</span> <span class='ident'>x</span>.<span class='ident'>len</span>() <span class='op'>&gt;</span> <span class='number'>0</span>) {
-            <span class='kw'>let</span> <span class='ident'>tz_hour</span>: <span class='ident'>i32</span> <span class='op'>=</span> <span class='ident'>caps</span>.<span class='ident'>name</span>(<span class='string'>&quot;tz_offset_hour&quot;</span>).<span class='ident'>and_then</span>(<span class='ident'>FromStr</span>::<span class='ident'>from_str</span>).<span class='ident'>unwrap</span>();
-            <span class='kw'>let</span> <span class='ident'>tz_minute</span> <span class='op'>=</span> <span class='ident'>caps</span>.<span class='ident'>name</span>(<span class='string'>&quot;tz_offset_minute&quot;</span>).<span class='ident'>and_then</span>(<span class='ident'>FromStr</span>::<span class='ident'>from_str</span>).<span class='ident'>unwrap</span>();
+            <span class='kw'>let</span> <span class='ident'>tz_hour</span>: <span class='ident'>i32</span> <span class='op'>=</span> <span class='ident'>caps</span>.<span class='ident'>name</span>(<span class='string'>&quot;tz_offset_hour&quot;</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>v</span><span class='op'>|</span> <span class='ident'>FromStr</span>::<span class='ident'>from_str</span>(<span class='ident'>v</span>).<span class='ident'>ok</span>()).<span class='ident'>unwrap</span>();
+            <span class='kw'>let</span> <span class='ident'>tz_minute</span> <span class='op'>=</span> <span class='ident'>caps</span>.<span class='ident'>name</span>(<span class='string'>&quot;tz_offset_minute&quot;</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>v</span><span class='op'>|</span> <span class='ident'>FromStr</span>::<span class='ident'>from_str</span>(<span class='ident'>v</span>).<span class='ident'>ok</span>()).<span class='ident'>unwrap</span>();
             <span class='kw'>let</span> <span class='ident'>tz_sign</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>caps</span>.<span class='ident'>name</span>(<span class='string'>&quot;tz_offset_sign&quot;</span>).<span class='ident'>map_or</span>(<span class='boolval'>false</span>, <span class='op'>|</span><span class='ident'>x</span><span class='op'>|</span> <span class='ident'>x</span> <span class='op'>==</span> <span class='string'>&quot;+&quot;</span>) { <span class='number'>1</span> } <span class='kw'>else</span> { <span class='op'>-</span><span class='number'>1</span> };
             <span class='ident'>FixedOffset</span>::<span class='ident'>east</span>(<span class='ident'>tz_sign</span> <span class='op'>*</span> (<span class='ident'>tz_hour</span> <span class='op'>*</span> <span class='number'>60</span> <span class='op'>+</span> <span class='ident'>tz_minute</span>) <span class='op'>*</span> <span class='number'>60</span>)
         } <span class='kw'>else</span> {
@@ -380,9 +403,14 @@
                 <span class='macro'>parse_field</span><span class='macro'>!</span>(<span class='ident'>caps</span>, <span class='string'>&quot;hour&quot;</span>),
                 <span class='macro'>parse_field</span><span class='macro'>!</span>(<span class='ident'>caps</span>, <span class='string'>&quot;minute&quot;</span>),
                 <span class='macro'>parse_field</span><span class='macro'>!</span>(<span class='ident'>caps</span>, <span class='string'>&quot;second&quot;</span>),
-                <span class='macro'>try_opt</span><span class='macro'>!</span>(<span class='ident'>FromStr</span>::<span class='ident'>from_str</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>microsecond</span>),
-                         <span class='string'>&quot;invalid value for microsecond&quot;</span>,
-                         <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='ident'>microsecond</span>)));
+                <span class='kw'>match</span> <span class='ident'>FromStr</span>::<span class='ident'>from_str</span>(<span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>microsecond</span>) {
+                    <span class='prelude-val'>Ok</span>(<span class='ident'>v</span>) <span class='op'>=&gt;</span> <span class='ident'>v</span>,
+                    <span class='prelude-val'>Err</span>(_) <span class='op'>=&gt;</span> {
+                        <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>DecodeError</span>(
+                            <span class='macro'>concat</span><span class='macro'>!</span>(<span class='string'>&quot;invalid value for microsecond&quot;</span>),
+                            <span class='prelude-val'>Some</span>(<span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;{:?}&quot;</span>, <span class='ident'>microsecond</span>))));
+                    }
+                });
         <span class='prelude-val'>Ok</span>(<span class='ident'>dt</span>)
     }
 }
@@ -446,7 +474,7 @@
 <span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
 <span class='kw'>mod</span> <span class='ident'>test</span> {
     <span class='kw'>use</span> <span class='ident'>super</span>::<span class='ident'>RFC3339</span>;
-    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>io</span>::<span class='ident'>MemWriter</span>;
+    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>old_io</span>::<span class='ident'>MemWriter</span>;
     <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>str</span>;
     <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>DateTime</span>, <span class='ident'>FixedOffset</span>};
     <span class='kw'>use</span> <span class='ident'>chrono</span>::{<span class='ident'>Offset</span>};

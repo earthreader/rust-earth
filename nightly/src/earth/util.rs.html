@@ -77,7 +77,7 @@
 <span id="35">35</span>
 <span id="36">36</span>
 </pre><pre class='rust '>
-<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>experimental</span>]</span>
+<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>unstable</span>]</span>
 
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>default</span>::<span class='ident'>Default</span>;
 
@@ -104,7 +104,7 @@
     <span class='op'>*</span><span class='ident'>opt</span> <span class='op'>=</span> <span class='ident'>target</span>.<span class='ident'>or</span>(<span class='ident'>old</span>);
 }
 
-<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>merge_vec</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>I</span><span class='op'>&gt;</span>(<span class='ident'>base</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span>, <span class='kw-2'>mut</span> <span class='ident'>data</span>: <span class='ident'>I</span>)
+<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>merge_vec</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>I</span><span class='op'>&gt;</span>(<span class='ident'>base</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span>, <span class='ident'>data</span>: <span class='ident'>I</span>)
     <span class='kw'>where</span> <span class='ident'>T</span>: <span class='ident'>PartialEq</span>, <span class='ident'>I</span>: <span class='ident'>Iterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='ident'>T</span><span class='op'>&gt;</span>
 {
     <span class='kw'>for</span> <span class='ident'>i</span> <span class='kw'>in</span> <span class='ident'>data</span> {

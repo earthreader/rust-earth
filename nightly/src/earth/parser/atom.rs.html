@@ -368,6 +368,7 @@
 <span id="326">326</span>
 <span id="327">327</span>
 <span id="328">328</span>
+<span id="329">329</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! Parsing Atom feed.</span>
 <span class='doccomment'>//!</span>
@@ -648,7 +649,8 @@
         <span class='ident'>mimetype</span>: <span class='ident'>element</span>.<span class='ident'>get_attr</span>(<span class='string'>&quot;type&quot;</span>).<span class='ident'>ok</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>v</span><span class='op'>|</span> <span class='ident'>v</span>.<span class='ident'>to_string</span>()),
         <span class='ident'>language</span>: <span class='ident'>element</span>.<span class='ident'>get_attr</span>(<span class='string'>&quot;hreflang&quot;</span>).<span class='ident'>ok</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>v</span><span class='op'>|</span> <span class='ident'>v</span>.<span class='ident'>to_string</span>()),
         <span class='ident'>title</span>: <span class='ident'>element</span>.<span class='ident'>get_attr</span>(<span class='string'>&quot;title&quot;</span>).<span class='ident'>ok</span>().<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>v</span><span class='op'>|</span> <span class='ident'>v</span>.<span class='ident'>to_string</span>()),
-        <span class='ident'>byte_size</span>: <span class='ident'>element</span>.<span class='ident'>get_attr</span>(<span class='string'>&quot;length&quot;</span>).<span class='ident'>ok</span>().<span class='ident'>and_then</span>(<span class='ident'>FromStr</span>::<span class='ident'>from_str</span>),
+        <span class='ident'>byte_size</span>: <span class='ident'>element</span>.<span class='ident'>get_attr</span>(<span class='string'>&quot;length&quot;</span>).<span class='ident'>ok</span>()
+                          .<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>v</span><span class='op'>|</span> <span class='ident'>FromStr</span>::<span class='ident'>from_str</span>(<span class='ident'>v</span>).<span class='ident'>ok</span>()),
     })
 }
 

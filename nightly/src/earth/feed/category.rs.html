@@ -134,7 +134,7 @@
 <span class='kw'>use</span> <span class='ident'>schema</span>::{<span class='ident'>Entity</span>, <span class='ident'>FromSchemaReader</span>, <span class='ident'>Mergeable</span>};
 
 <span class='doccomment'>/// Category element defined in :rfc:`4287#section-4.2.2` (section 4.2.2).</span>
-<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Default</span>, <span class='ident'>Show</span>)]</span>
+<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Default</span>, <span class='ident'>Debug</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Category</span> {
     <span class='doccomment'>/// The required machine-readable identifier string of the cateogry.</span>
     <span class='doccomment'>/// It corresponds to ``term`` attribute of :rfc:`4287#section-4.2.2.1` (section 4.2.2.1).</span>
