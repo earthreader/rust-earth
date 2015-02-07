@@ -32,7 +32,7 @@ pub mod macros {
     #[macro_export]
     macro_rules! expect_invalid_key {
         ($($f:ident).+, $key:expr) => ({
-            let key: &[&[u8]] = $key;
+            let key: &[&str] = $key;
             assert_err!($($f).+(key), RepositoryError::InvalidKey(k, _) => {
                 assert_eq!(k, key);
             })

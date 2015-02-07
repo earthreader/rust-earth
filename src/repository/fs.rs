@@ -5,7 +5,6 @@ use std::error::FromError;
 use std::old_io;
 use std::old_io::{BufferedReader, FileAccess, FileMode, IoError, IoErrorKind};
 use std::old_io::fs::{File, PathExtensions, readdir, mkdir_recursive};
-use std::old_path::BytesContainer;
 
 use url::{Url};
 
@@ -44,11 +43,19 @@ impl FileSystemRepository {
     }
 }
 
+fn _join<'a, T: Str + 'a, I: Iterator<Item=&'a T>>(p: &Path, key: I) -> Path {
+    let mut p = p.clone();
+    for k in key {
+        p = p.join(k.as_slice());
+    }
+    p
+}
+
 impl Repository for FileSystemRepository {
-    fn get_reader<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+    fn get_reader<'a, T: Str>(&'a self, key: &[T]) ->
         RepositoryResult<Box<Buffer + 'a>>
     {
-        let path = self.path.join_many(key);
+        let path = _join(&self.path, key.iter());
         if !path.is_file() {
             return Err(RepositoryError::invalid_key(key, None));
         }
@@ -56,10 +63,10 @@ impl Repository for FileSystemRepository {
         Ok(Box::new(BufferedReader::new(file)) as Box<Buffer>)
     }
 
-    fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
+    fn get_writer<'a, T: Str>(&'a mut self, key: &[T]) ->
         RepositoryResult<Box<Writer + 'a>>
     {
-        let path = self.path.join_many(key);
+        let path = _join(&self.path, key.iter());
         let dir_path = path.dir_path();
         if !dir_path.exists() {
             match mkdir_recursive(&dir_path, old_io::USER_DIR) {
@@ -87,19 +94,21 @@ impl Repository for FileSystemRepository {
         Ok(Box::new(file) as Box<Writer>)
     }
 
-    fn exists<T: BytesContainer>(&self, key: &[T]) -> bool {
-        PathExtensions::exists(&self.path.join_many(key))
+    fn exists<T: Str>(&self, key: &[T]) -> bool {
+        PathExtensions::exists(&_join(&self.path, key.iter()))
     }
 
-    fn list<'a, T: BytesContainer>(&'a self, key: &[T]) ->
-        RepositoryResult<Names>
-    {
-        let names = match readdir(&self.path.join_many(key)) {
+    fn list<'a, T: Str>(&'a self, key: &[T]) -> RepositoryResult<Names> {
+        use std::str::from_utf8;
+        let names = match readdir(&_join(&self.path, key.iter())) {
             Ok(v) => v,
             Err(e) => return Err(RepositoryError::invalid_key(key, Some(e))),
         };
-        let iter = names.into_iter().filter_map(|path| path.filename()
-                                                .map(|p| p.to_vec()));
+        let iter = names.into_iter().filter_map(|path| {
+            path.filename()
+                .and_then(|p| from_utf8(p).ok())
+                .map(|v| v.to_string())
+        });
         Ok(Box::new(iter) as Names)
     }
 }
@@ -145,7 +154,6 @@ mod test {
     use std::collections::BTreeSet;
     use std::old_io::{File, IoErrorKind, USER_DIR};
     use std::old_io::fs::{PathExtensions, mkdir_recursive};
-    use std::str;
 
     use url::Url;
 
@@ -173,7 +181,6 @@ mod test {
         let path_str = tmpdir.path()
             .str_components()
             .map(|e| e.unwrap())
-
             .collect::<Vec<_>>()
             .connect("/");
         let path_prefix_len = match prefix(tmpdir.path()) {
@@ -204,7 +211,7 @@ mod test {
         let tmpdir = temp_dir();
         let f = FsRepo::from_path(tmpdir.path(), true).unwrap();
 
-        expect_invalid_key!(f.get_reader, &[b"key"]);
+        expect_invalid_key!(f.get_reader, &["key"]);
         {
             let mut file = File::create(&tmpdir.path().join("key")).unwrap();
             write!(&mut file, "file content").unwrap();
@@ -218,7 +225,7 @@ mod test {
         let tmpdir = temp_dir();
         let f = FsRepo::from_path(tmpdir.path(), true).unwrap();
 
-        expect_invalid_key!(f.get_reader, &[b"dir", b"dir2", b"key"]);
+        expect_invalid_key!(f.get_reader, &["dir", "dir2", "key"]);
         {
             let mut path = tmpdir.path().clone();
             path.push("dir");
@@ -301,7 +308,6 @@ mod test {
             .map(|i| format!("d{}", i))
             .collect();
         let paths = f.list(&["dir"]).unwrap()
-            .map(|i| str::from_utf8(&i[]).unwrap().to_string())
             .collect::<BTreeSet<_>>();
         assert_eq!(paths, expected);
     }
@@ -310,7 +316,7 @@ mod test {
     fn test_file_list_on_wrong_key() {
         let tmpdir = temp_dir();
         let f = FsRepo::from_path(tmpdir.path(), true).unwrap();
-        expect_invalid_key!(f.list, &[b"not-exist"]);
+        expect_invalid_key!(f.list, &["not-exist"]);
     }
 
     #[test]

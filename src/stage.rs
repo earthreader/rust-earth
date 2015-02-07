@@ -8,14 +8,13 @@ mod dirtybuffer {
 
     use std::collections::{HashMap, HashSet};
     use std::old_io::{BufReader, IoResult, Writer};
-    use std::old_path::BytesContainer;
 
     enum NestedItem<K, V> {
         Item(V), Map(HashMap<K, NestedItem<K, V>>)
     }
     type NestedMap<K, V> = HashMap<K, NestedItem<K, V>>;
 
-    type PathKey = Vec<u8>;
+    type PathKey = String;
     type Dictionary = NestedMap<PathKey, Option<Vec<u8>>>;
 
     pub struct DirtyBuffer<R> {
@@ -38,7 +37,7 @@ mod dirtybuffer {
 
     fn _flush<R: Repository>(repo: &mut R,
                              _dictionary: &mut Dictionary,
-                             _key: Vec<Vec<u8>>) -> RepositoryResult<()> {
+                             _key: Vec<String>) -> RepositoryResult<()> {
         for (k, value) in _dictionary.iter_mut() {
             let mut key = _key.clone();
             key.push(k.clone());
@@ -57,7 +56,7 @@ mod dirtybuffer {
     }
 
     impl<R: Repository> Repository for DirtyBuffer<R> {
-        fn get_reader<'a, T: BytesContainer>(&'a self, key: &[T]) ->
+        fn get_reader<'a, T: Str>(&'a self, key: &[T]) ->
             RepositoryResult<Box<Buffer + 'a>>
         {
             let b = match find_item(&self.dictionary, key) {
@@ -69,7 +68,7 @@ mod dirtybuffer {
             Ok(Box::new(reader) as Box<Buffer>)
         }
 
-        fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
+        fn get_writer<'a, T: Str>(&'a mut self, key: &[T]) ->
             RepositoryResult<Box<Writer + 'a>>
         {
             let mut slot = match dig(&mut self.dictionary, key) {
@@ -83,7 +82,7 @@ mod dirtybuffer {
             Ok(Box::new(writer) as Box<Writer>)
         }
 
-        fn exists<T: BytesContainer>(&self, key: &[T]) -> bool {
+        fn exists<T: Str>(&self, key: &[T]) -> bool {
             match find_item(&self.dictionary, key) {
                 FindResult::Found(_) => true,
                 FindResult::NotFound => self.inner.exists(key),
@@ -91,9 +90,7 @@ mod dirtybuffer {
             }
         }
 
-        fn list<T: BytesContainer>(&self, key: &[T]) ->
-            RepositoryResult<Names>
-        {
+        fn list<T: Str>(&self, key: &[T]) -> RepositoryResult<Names> {
             let d = if key.is_empty() {
                 &self.dictionary
             } else {
@@ -146,15 +143,15 @@ mod dirtybuffer {
         InvalidKey,
     }
 
-    fn find_item<'a, T: BytesContainer>(dict: &'a Dictionary, key: &[T]) ->
+    fn find_item<'a, T: Str>(dict: &'a Dictionary, key: &[T]) ->
         FindResult<&'a NestedItem<PathKey, Option<Vec<u8>>>>
     {
         let head = match key.first() {
-            Some(k) => k.container_as_bytes(),
+            Some(k) => k,
             None => { return FindResult::InvalidKey; }
         };
         let tail = key.tail();
-        match dict.get(head) {
+        match dict.get(head.as_slice()) {
             Some(v) if tail.is_empty() => FindResult::Found(v),
             Some(&NestedItem::Map(ref m)) => find_item(m, key.tail()),
             None => FindResult::NotFound,
@@ -162,11 +159,11 @@ mod dirtybuffer {
         }
     }
 
-    fn dig<'a, T: BytesContainer>(map: &'a mut Dictionary, key: &[T]) ->
+    fn dig<'a, T: Str>(map: &'a mut Dictionary, key: &[T]) ->
         Option<&'a mut Option<Vec<u8>>>
     {
         let head = match key.first() {
-            Some(k) => k.container_as_bytes().to_vec(),
+            Some(k) => k.as_slice().to_string(),
             None => { return None; }
         };
         let tail = key.tail();
