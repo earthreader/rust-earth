@@ -1,11 +1,11 @@
-#![experimental]
+#![unstable]
 
 use std::borrow::ToOwned;
 use std::fmt;
 
 use regex;
 
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum MimeType {
     Text,
     Html,

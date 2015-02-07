@@ -19,7 +19,7 @@ use util::merge_vec;
 ///
 /// RFC: <https://tools.ietf.org/html/rfc4287#section-4.2.7>.
 #[unstable]
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Link {
     /// The link's required URI.  It corresponds to `href` attribute of
     /// [RFC 4287 (section 4.2.7.1)][rfc-link-1].
@@ -139,19 +139,20 @@ impl FromSchemaReader for Link {
         self.title = element.get_attr("title").ok()
                             .map(ToOwned::to_owned);
         self.byte_size = element.get_attr("length").ok()
-                                .and_then(FromStr::from_str);
+                                .and_then(|v| FromStr::from_str(v).ok());
         Ok(())
     }
 }
 
 
-#[experimental]
+#[unstable]
 pub enum Predicate<'a> {
     #[doc(hidden)] Simple(&'a str),
     #[doc(hidden)] Regex(Regex)
 }
 
-impl<'a, 'b, 'c> Fn(&'c &'b Link) -> bool for Predicate<'a> {
+impl<'a, 'b, 'c> Fn<(&'c &'b Link,)> for Predicate<'a> {
+    type Output = bool;
     extern "rust-call" fn call(&self, args: (&'c &'b Link,)) -> bool {
         let (l,) = args;
         match (l.mimetype.as_ref(), self) {
@@ -164,7 +165,7 @@ impl<'a, 'b, 'c> Fn(&'c &'b Link) -> bool for Predicate<'a> {
     }
 }
 
-#[experimental]
+#[unstable]
 pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
     /// Filter links by their `mimetype` e.g.:
     ///
@@ -184,7 +185,7 @@ pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
     /// # ;
     /// ```
     fn filter_by_mimetype<'b>(self, pattern: &'b str) ->
-        Filter<&'a Link, Self, Predicate<'b>>
+        Filter<Self, Predicate<'b>>
     {
         use regex;
         if pattern.contains_char('*') {
@@ -218,7 +219,7 @@ pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
         }).max_by(|pair| pair.1).map(|pair| pair.0)
     }
 
-    fn favicon(mut self) -> Option<&'a Link> {
+    fn favicon(self) -> Option<&'a Link> {
         for link in self {
             if link.relation.split(' ').any(|i| i == "icon") {
                 return Some(link);
@@ -232,7 +233,7 @@ impl<'a, I: Iterator<Item=&'a Link>> LinkIteratorExt<'a> for I { }
 
 
 #[deprecated = "wondering where this struct is needed"]
-#[derive(Default, Show)]
+#[derive(Default, Debug)]
 pub struct LinkList(pub Vec<Link>);
 
 impl LinkList {

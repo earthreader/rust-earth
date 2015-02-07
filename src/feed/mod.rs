@@ -52,7 +52,7 @@ const ATOM_XMLNS: &'static str = "http://www.w3.org/2005/Atom";
 const MARK_XMLNS: &'static str = "http://earthreader.org/mark/";
 
 
-#[experimental]
+#[unstable]
 pub trait Blob {
     fn mimetype(&self) -> MimeType;
 

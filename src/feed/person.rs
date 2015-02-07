@@ -17,7 +17,7 @@ use util::{merge_vec, set_default};
 ///
 /// RFC: <https://tools.ietf.org/html/rfc4287#section-3.2>
 #[unstable]
-#[derive(PartialEq, Eq, Hash, Show)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub struct Person {
     /// The human-readable name for the person.  It corresponds to
     /// `atom:name` element of [RFC 4287 (section 3.2.1)][rfc-person-1].

@@ -11,8 +11,8 @@
 //! [Google Drive]: https://drive.google.com/
 use std::error::{Error, FromError};
 use std::fmt;
-use std::io::IoError;
-use std::path::BytesContainer;
+use std::old_io::IoError;
+use std::old_path::BytesContainer;
 
 pub use self::utils::{Bytes, Names};
 pub use self::fs::FileSystemRepository;
@@ -21,7 +21,7 @@ pub mod fs;
 
 pub type RepositoryResult<T> = Result<T, RepositoryError>;
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum RepositoryError {
     InvalidKey(Vec<Vec<u8>>, Option<IoError>),
     InvalidUrl(&'static str),
@@ -133,7 +133,7 @@ pub trait Repository {
     {
         let mut w = try!(self.get_writer(key));
         for b in buf.iter() {
-            try!(w.write(b.as_bytes()));
+            try!(w.write_all(b.as_bytes()));
         }
         Ok(())
     }
@@ -193,9 +193,9 @@ pub mod test {
     use super::{Names, Repository, RepositoryError, RepositoryResult};
 
     use std::collections::BTreeSet;
-    use std::io::fs::PathExtensions;
-    use std::io::util::{NullReader, NullWriter};
-    use std::path::BytesContainer;
+    use std::old_io::fs::PathExtensions;
+    use std::old_io::util::{NullReader, NullWriter};
+    use std::old_path::BytesContainer;
 
     struct RepositoryImplemented;
     

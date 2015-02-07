@@ -1,4 +1,4 @@
-#![experimental]
+#![unstable]
 //! Sanitize HTML tags.
 use std::borrow::{Cow, IntoCow, ToOwned};
 use std::default::Default;
@@ -98,7 +98,7 @@ pub const QUOTE_BR: EscapeTable<'static> = Cow::Borrowed(&[
     ('\n', "<br>\n"),
 ]);
 
-#[experimental]
+#[unstable]
 pub struct Escape<'a>(#[doc(hidden)] pub &'a str,
                       #[doc(hidden)] pub EscapeTable<'static>);
 
@@ -126,7 +126,7 @@ impl<'a> fmt::Display for Escape<'a> {
     }
 }
 
-#[experimental]
+#[unstable]
 pub struct CleanHtml<'a>(pub &'a str);
 
 impl<'a> fmt::Display for CleanHtml<'a> {
@@ -155,7 +155,7 @@ impl<'a, 'b> TokenSink for MarkupTagCleaner<'a, 'b> {
     }
 }
 
-#[experimental]
+#[unstable]
 pub struct SanitizeHtml<'a>(pub &'a str, pub Option<Url>);
 
 impl<'a> fmt::Display for SanitizeHtml<'a> {

@@ -15,7 +15,7 @@ use parser::base::NestedEvent::Nested;
 pub type SchemaResult<T> = Result<T, SchemaError>;
 
 #[deprecated]
-#[derive(Show)]
+#[derive(Debug)]
 pub enum SchemaError {
 //    DescriptorConflict,
 //    IntegrityError,
@@ -43,7 +43,7 @@ pub trait Codec<T> {
     fn decode(&self, r: &str) -> SchemaResult<T>;
 }
 
-#[experimental]
+#[unstable]
 pub trait Entity {
     type OwnedId;
     type BorrowedId: ?Sized;
@@ -57,7 +57,7 @@ pub trait Entity {
 ///
 /// The default implementation does nothing.  That means the entity of the
 /// newer session will always win unless the method is redefined.
-#[experimental]
+#[unstable]
 pub trait Mergeable: Sized {
     /// Merge data with the given value to renew itself as a latest state.
     ///
@@ -111,13 +111,13 @@ impl<T: Entity + Mergeable> Mergeable for Vec<T>
 }
 
 /// The root element of the document.
-#[experimental]
+#[unstable]
 pub trait DocumentElement {
     fn tag() -> &'static str;
     fn xmlns() -> Option<&'static str>;
 }
 
-#[experimental]
+#[unstable]
 pub trait FromSchemaReader: Default + Sized {
     fn build_from<B: Buffer>(element: XmlElement<B>) -> DecodeResult<Self> {
         let mut result: Self = Default::default();

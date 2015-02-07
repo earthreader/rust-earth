@@ -15,7 +15,7 @@ use schema::{Codec, Entity, FromSchemaReader, Mergeable};
 /// for Earth Reader.
 ///
 /// [rfc-atom]: https://tools.ietf.org/html/rfc4287
-#[derive(Clone, Default, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Debug)]
 pub struct Mark {
     /// Whether it's marked or not.
     pub marked: bool,

@@ -2,10 +2,10 @@ use super::{Names, Repository, RepositoryError, RepositoryResult,
             ToRepository};
 
 use std::error::FromError;
-use std::io;
-use std::io::IoError;
-use std::io::fs::{File, PathExtensions, readdir, mkdir_recursive};
-use std::path::BytesContainer;
+use std::old_io;
+use std::old_io::{BufferedReader, FileAccess, FileMode, IoError, IoErrorKind};
+use std::old_io::fs::{File, PathExtensions, readdir, mkdir_recursive};
+use std::old_path::BytesContainer;
 
 use url::{Url};
 
@@ -23,10 +23,10 @@ impl FileSystemRepository {
     {
         if !path.exists() {
             if mkdir {
-                match mkdir_recursive(path, io::USER_DIR) {
+                match mkdir_recursive(path, old_io::USER_DIR) {
                     Ok(_) => { }
                     Err(err) => match err.kind {
-                        io::IoErrorKind::PathAlreadyExists => { }
+                        IoErrorKind::PathAlreadyExists => { }
                         _ => { return Err(FromError::from_error(err)) }
                     }
                 }
@@ -53,7 +53,7 @@ impl Repository for FileSystemRepository {
             return Err(RepositoryError::invalid_key(key, None));
         }
         let file = try!(File::open(&path));
-        Ok(Box::new(io::BufferedReader::new(file)) as Box<Buffer>)
+        Ok(Box::new(BufferedReader::new(file)) as Box<Buffer>)
     }
 
     fn get_writer<'a, T: BytesContainer>(&'a mut self, key: &[T]) ->
@@ -62,10 +62,10 @@ impl Repository for FileSystemRepository {
         let path = self.path.join_many(key);
         let dir_path = path.dir_path();
         if !dir_path.exists() {
-            match mkdir_recursive(&dir_path, io::USER_DIR) {
+            match mkdir_recursive(&dir_path, old_io::USER_DIR) {
                 Ok(_) => { }
                 Err(e) => match e.kind {
-                    io::IoErrorKind::PathAlreadyExists => {
+                    IoErrorKind::PathAlreadyExists => {
                         return Err(RepositoryError::invalid_key(key, Some(e)));
                     }
                     _ => {
@@ -78,8 +78,8 @@ impl Repository for FileSystemRepository {
             return Err(RepositoryError::invalid_key(key, None));
         }
         let file_res = File::open_mode(&path,
-                                       io::FileMode::Open,
-                                       io::FileAccess::Write);
+                                       FileMode::Open,
+                                       FileAccess::Write);
         let file = match file_res {
             Ok(f) => f,
             Err(e) => return Err(RepositoryError::invalid_key(key, Some(e))),
@@ -143,8 +143,8 @@ mod test {
     use super::FileSystemRepository as FsRepo;
 
     use std::collections::BTreeSet;
-    use std::io::{File, IoErrorKind, USER_DIR};
-    use std::io::fs::{PathExtensions, mkdir_recursive};
+    use std::old_io::{File, IoErrorKind, USER_DIR};
+    use std::old_io::fs::{PathExtensions, mkdir_recursive};
     use std::str;
 
     use url::Url;
@@ -167,8 +167,8 @@ mod test {
     #[cfg(windows)]
     #[test]
     fn test_file_from_to_url_on_windows() {
-        use std::path::windows::prefix;
-        use std::path::windows::PathPrefix;
+        use std::old_path::windows::prefix;
+        use std::old_path::windows::PathPrefix;
         let tmpdir = temp_dir();
         let path_str = tmpdir.path()
             .str_components()
@@ -329,7 +329,7 @@ mod test {
     fn test_not_dir() {
         let tmpdir = temp_dir();
         let path = tmpdir.path().join("not-dir.txt");
-        File::create(&path).write(&[]).unwrap();
+        File::create(&path).write_all(&[]).unwrap();
         assert_err!(FsRepo::from_path(&path, false),
                     RepositoryError::NotADirectory(p) => {
                         assert_eq!(path, p);

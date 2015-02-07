@@ -2,7 +2,7 @@
        html_favicon_url = "http://earthreader.org/favicon.ico",
        html_root_url = "http://earthreader.org/rust-earth/")]
 #![feature(plugin, unboxed_closures, unsafe_destructor)]
-#![allow(unstable)]
+#![feature(collections, core, hash, io, path, std_misc)]
 //! **rust-earth** is an alternative library of [libearth][], the shared common
 //! library for various [Earth Reader][] apps.
 //!
@@ -20,7 +20,7 @@
 #[plugin] #[no_link] extern crate regex_macros;
 #[plugin] #[no_link] extern crate string_cache_macros;
 
-extern crate serialize;
+extern crate "rustc-serialize" as serialize;
 extern crate regex;
 extern crate time;
 

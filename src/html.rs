@@ -1,4 +1,4 @@
-#![experimental]
+#![unstable]
 //! The adatper to display a given value as an HTML element.
 //!
 //! ## Example
@@ -39,7 +39,7 @@ use std::ops::Deref;
 use std::fmt;
 
 
-#[experimental]
+#[unstable]
 pub struct ForHtml<'a, T: ?Sized + 'a> { _inner: &'a T }
 
 impl<'a, T: ?Sized> Deref for ForHtml<'a, T> {
@@ -48,7 +48,7 @@ impl<'a, T: ?Sized> Deref for ForHtml<'a, T> {
 }
 
 
-#[experimental]
+#[unstable]
 pub trait ToHtml {
     fn to_html(&self) -> ForHtml<Self> { ForHtml { _inner: self } }
 }

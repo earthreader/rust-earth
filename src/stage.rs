@@ -7,8 +7,8 @@ mod dirtybuffer {
     use repository::{Names, Repository, RepositoryError, RepositoryResult};
 
     use std::collections::{HashMap, HashSet};
-    use std::io::{BufReader, IoResult, Writer};
-    use std::path::BytesContainer;
+    use std::old_io::{BufReader, IoResult, Writer};
+    use std::old_path::BytesContainer;
 
     enum NestedItem<K, V> {
         Item(V), Map(HashMap<K, NestedItem<K, V>>)
@@ -47,7 +47,7 @@ mod dirtybuffer {
                 NestedItem::Item(Some(ref v)) => {
                     // TODO: merge with inner repo
                     let mut w = try!(repo.get_writer(&key[]));
-                    try!(w.write(&v[]));
+                    try!(w.write_all(&v[]));
                 }
                 _ => { /* unsure */ }
             }
@@ -125,8 +125,8 @@ mod dirtybuffer {
     }
 
     impl<'a> Writer for DirtyWriter<'a> {
-        fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-            self.writer.as_mut().unwrap().write(buf)
+        fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+            self.writer.as_mut().unwrap().write_all(buf)
         }
         fn flush(&mut self) -> IoResult<()> {
             self.writer.as_mut().unwrap().flush()

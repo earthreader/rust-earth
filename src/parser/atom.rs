@@ -277,7 +277,8 @@ fn parse_link<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
         mimetype: element.get_attr("type").ok().map(|v| v.to_string()),
         language: element.get_attr("hreflang").ok().map(|v| v.to_string()),
         title: element.get_attr("title").ok().map(|v| v.to_string()),
-        byte_size: element.get_attr("length").ok().and_then(FromStr::from_str),
+        byte_size: element.get_attr("length").ok()
+                          .and_then(|v| FromStr::from_str(v).ok()),
     })
 }
 

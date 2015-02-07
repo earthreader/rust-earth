@@ -18,14 +18,14 @@ path = "src/lib.rs"
 chrono = "*"
 regex = "*"
 regex_macros = "*"
+rustc-serialize = "*"
 time = "*"
 url = "*"
 xml-rs = "*"
 
 [dependencies.html5ever]
 # workaround. should be reverted.
-git = "https://github.com/Manishearth/html5ever.git"
-branch = "deprecated"
+git = "https://github.com/Kroisse/html5ever.git"
 
 [dependencies.string_cache]
 git = "https://github.com/servo/string-cache"

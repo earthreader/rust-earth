@@ -29,10 +29,19 @@ macro_rules! try_opt {
 macro_rules! parse_field {
     ($caps:expr, $field:expr) => (
         {
-            let value = $caps.name($field);
-            try_opt!(value.and_then(FromStr::from_str),
-                     concat!("invalid value for ", $field),
-                     format!("{:?}", value))
+            match $caps.name($field).map(FromStr::from_str) {
+                Some(Ok(v)) => v,
+                Some(Err(e)) => {
+                    return Err(DecodeError(
+                        concat!("invalid value for ", $field),
+                        Some(format!("{}", e))));
+                }
+                None => {
+                    return Err(DecodeError(
+                        concat!("invalid value for ", $field),
+                        None));
+                }
+            }
         }
     )
 }
@@ -79,8 +88,8 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
             Some(c) => c,
         };
         let offset = if caps.name("tz_offset").map_or(false, |x| x.len() > 0) {
-            let tz_hour: i32 = caps.name("tz_offset_hour").and_then(FromStr::from_str).unwrap();
-            let tz_minute = caps.name("tz_offset_minute").and_then(FromStr::from_str).unwrap();
+            let tz_hour: i32 = caps.name("tz_offset_hour").and_then(|v| FromStr::from_str(v).ok()).unwrap();
+            let tz_minute = caps.name("tz_offset_minute").and_then(|v| FromStr::from_str(v).ok()).unwrap();
             let tz_sign = if caps.name("tz_offset_sign").map_or(false, |x| x == "+") { 1 } else { -1 };
             FixedOffset::east(tz_sign * (tz_hour * 60 + tz_minute) * 60)
         } else {
@@ -98,9 +107,14 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
                 parse_field!(caps, "hour"),
                 parse_field!(caps, "minute"),
                 parse_field!(caps, "second"),
-                try_opt!(FromStr::from_str(&*microsecond),
-                         "invalid value for microsecond",
-                         format!("{:?}", microsecond)));
+                match FromStr::from_str(&*microsecond) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return Err(DecodeError(
+                            concat!("invalid value for microsecond"),
+                            Some(format!("{:?}", microsecond))));
+                    }
+                });
         Ok(dt)
     }
 }
@@ -164,7 +178,7 @@ impl Codec<bool> for Boolean {
 #[cfg(test)]
 mod test {
     use super::RFC3339;
-    use std::io::MemWriter;
+    use std::old_io::MemWriter;
     use std::str;
     use chrono::{DateTime, FixedOffset};
     use chrono::{Offset};

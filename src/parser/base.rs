@@ -14,6 +14,7 @@ pub use xml::name::OwnedName as XmlName;
 pub use xml::namespace::Namespace as XmlNamespace;
 pub use self::events::NestedEvent;
 
+#[derive(Debug)]
 pub enum DecodeError {
     XmlError(xml::common::Error),
     UnexpectedEvent { event: xml::reader::events::XmlEvent, depth: usize },

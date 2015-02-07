@@ -1,4 +1,4 @@
-#![experimental]
+#![unstable]
 
 use std::default::Default;
 
@@ -25,7 +25,7 @@ pub fn replace<T>(opt: &mut Option<T>, target: Option<T>) {
     *opt = target.or(old);
 }
 
-pub fn merge_vec<T, I>(base: &mut Vec<T>, mut data: I)
+pub fn merge_vec<T, I>(base: &mut Vec<T>, data: I)
     where T: PartialEq, I: Iterator<Item=T>
 {
     for i in data {

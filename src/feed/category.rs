@@ -7,7 +7,7 @@ use parser::base::{DecodeResult, XmlElement};
 use schema::{Entity, FromSchemaReader, Mergeable};
 
 /// Category element defined in :rfc:`4287#section-4.2.2` (section 4.2.2).
-#[derive(Default, Show)]
+#[derive(Default, Debug)]
 pub struct Category {
     /// The required machine-readable identifier string of the cateogry.
     /// It corresponds to ``term`` attribute of :rfc:`4287#section-4.2.2.1` (section 4.2.2.1).

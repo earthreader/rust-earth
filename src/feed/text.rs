@@ -22,7 +22,7 @@ use schema::{FromSchemaReader, Mergeable};
 ///
 /// Note: It currently does not support `xhtml`.
 #[unstable]
-#[derive(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Text {
     /// The plain text content.  It corresponds to :rfc:`4287#section-3.1.1.1` (section 3.1.1.1).
     ///

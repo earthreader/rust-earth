@@ -17,7 +17,7 @@ use sanitizer::{escape, sanitize_html};
 use schema::{FromSchemaReader};
 
 /// Content construct defined in :rfc:`4287#section-4.1.3` (section 4.1.3).
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Content {
     mimetype: MimeType,
     body: Vec<u8>,
