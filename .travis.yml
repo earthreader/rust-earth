@@ -1,4 +1,5 @@
 language: rust
+sudo: false
 env:
   global:
     - secure: fHQhmrcupjNlpMsutG6K0+YslHSdObv72XUvsVF7iFndQs16xPJYQYxooTkyTo3QTZHkleOB3qfD0jct5JAKBbzqukTKYEVAR5fw8Qp9ZjIdhgxjL+Ap0s1c1Q+KFMQRmZNuECb7HQyTllu9V5+xy85HSd/35P51vH8imap7OTw=
@@ -7,4 +8,4 @@ script:
   - cargo doc --no-deps --verbose
 after_script:
   - mv target/doc .
-  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
+  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | bash
