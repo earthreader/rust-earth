@@ -24,8 +24,7 @@ url = "*"
 xml-rs = "*"
 
 [dependencies.html5ever]
-# workaround. should be reverted.
-git = "https://github.com/Kroisse/html5ever.git"
+git = "https://github.com/servo/html5ever.git"
 
 [dependencies.string_cache]
 git = "https://github.com/servo/string-cache"
