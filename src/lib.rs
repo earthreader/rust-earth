@@ -17,9 +17,8 @@
        html_root_url = "http://earthreader.org/rust-earth/")]
 #![feature(plugin, unboxed_closures, unsafe_destructor)]
 #![feature(collections, core, hash, io, path, std_misc)]
-
-#[plugin] #[no_link] extern crate regex_macros;
-#[plugin] #[no_link] extern crate string_cache_macros;
+#![plugin(regex_macros)]
+#![plugin(string_cache_plugin)]
 
 extern crate "rustc-serialize" as serialize;
 extern crate regex;

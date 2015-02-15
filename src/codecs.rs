@@ -178,7 +178,6 @@ impl Codec<bool> for Boolean {
 #[cfg(test)]
 mod test {
     use super::RFC3339;
-    use std::old_io::MemWriter;
     use std::str;
     use chrono::{DateTime, FixedOffset};
     use chrono::{Offset};
@@ -216,9 +215,9 @@ mod test {
     }
 
     fn to_string<T, C: Codec<T>>(codec: C, value: T) -> String {
-        let mut w = MemWriter::new();
+        let mut w: Vec<u8> = vec![];
         codec.encode(&value, &mut w).unwrap();
-        str::from_utf8(w.get_ref()).unwrap().to_string()
+        str::from_utf8(&w).unwrap().to_string()
     }
 
     #[test]
