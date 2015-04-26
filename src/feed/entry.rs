@@ -1,7 +1,6 @@
-#![unstable]
-
 use std::borrow::Cow;
 use std::default::Default;
+use std::io;
 use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
@@ -86,9 +85,9 @@ impl DocumentElement for Entry {
 }
 
 impl FromSchemaReader for Entry {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[]) {
+    fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
+                                   child: XmlElement<B>) -> DecodeResult<()> {
+        match (name.namespace_as_ref(), &name.local_name[..]) {
             (Some(ATOM_XMLNS), "published") => {
                 self.published_at = Some(try!(parse_datetime(child)));
             }
@@ -117,9 +116,8 @@ impl FromSchemaReader for Entry {
 }
 
 impl Entity for Entry {
-    type OwnedId = String;
-    type BorrowedId = str;
-    fn entity_id(&self) -> Cow<String, str> {
+    type Id = str;
+    fn entity_id(&self) -> Cow<str> {
         self.metadata.entity_id()
     }
 }

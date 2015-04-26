@@ -1,7 +1,6 @@
-#![unstable]
-
 use std::borrow::{Cow, ToOwned};
 use std::fmt;
+use std::io;
 
 use parser::base::{DecodeResult, XmlElement};
 use schema::{Entity, FromSchemaReader, Mergeable};
@@ -31,10 +30,9 @@ pub struct Category {
 }
 
 impl Entity for Category {
-    type OwnedId = String;
-    type BorrowedId = str;
-    fn entity_id(&self) -> Cow<String, str> {
-        Cow::Borrowed(&self.term[])
+    type Id = str;
+    fn entity_id(&self) -> Cow<str> {
+        Cow::Borrowed(&self.term[..])
     }
 }
 
@@ -53,8 +51,8 @@ impl fmt::Display for Category {
 }
 
 impl FromSchemaReader for Category {
-    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
-                            -> DecodeResult<()>
+    fn read_from<B: io::BufRead>(&mut self, element: XmlElement<B>)
+                                 -> DecodeResult<()>
     {
         self.term = try!(element.get_attr("term")).to_owned();
         self.scheme_uri = element.get_attr("scheme").ok()

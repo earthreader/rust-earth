@@ -1,12 +1,12 @@
-#![unstable]
 //! Provides commonly used codecs to parse RSS-related standard formats.
-use std::borrow::{IntoCow, ToOwned};
+use std::borrow::{Cow, ToOwned};
 use std::default::Default;
+use std::io;
 use std::str::FromStr;
-use std::string::CowString;
 
 use chrono::{DateTime, FixedOffset};
-use chrono::{Timelike, Offset};
+use chrono::{Timelike, TimeZone, Offset};
+use regex::Regex;
 
 use schema::{SchemaResult, Codec};
 use schema::SchemaError::{EncodeError, DecodeError};
@@ -50,7 +50,7 @@ macro_rules! parse_field {
 pub struct RFC3339;
 
 impl Codec<DateTime<FixedOffset>> for RFC3339 {
-    fn encode(&self, value: &DateTime<FixedOffset>, w: &mut Writer) -> SchemaResult<()> {
+    fn encode(&self, value: &DateTime<FixedOffset>, w: &mut io::Write) -> SchemaResult<()> {
         let dt = value.format("%Y-%m-%dT%H:%M:%S");
         try_encode!(write!(w, "{}", dt));
         let nsec = value.nanosecond();
@@ -70,7 +70,7 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
     }
 
     fn decode(&self, r: &str) -> SchemaResult<DateTime<FixedOffset>> {
-        let pattern = regex!(concat!(
+        let pattern = Regex::new(concat!(
             r#"^\s*"#,
             r#"(?P<year>\d{4})-(?P<month>0[1-9]|1[012])-(?P<day>0[1-9]|[12]\d|3[01])"#,
             r#"T"#,
@@ -79,7 +79,7 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
             r#"(?P<tz>Z|(?P<tz_offset>(?P<tz_offset_sign>[+-])(?P<tz_offset_hour>[01]\d|2[0-3])"#,
                                                           r#":(?P<tz_offset_minute>[0-5]\d)))"#,
             r#"\s*$"#,
-        ));
+        )).unwrap();
         let caps = match pattern.captures(r) {
             None => {
                 return Err(DecodeError("invalid RFC 3339 date time string",
@@ -89,14 +89,14 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
         };
         let offset = if caps.name("tz_offset").map_or(false, |x| x.len() > 0) {
             let tz_hour: i32 = caps.name("tz_offset_hour").and_then(|v| FromStr::from_str(v).ok()).unwrap();
-            let tz_minute = caps.name("tz_offset_minute").and_then(|v| FromStr::from_str(v).ok()).unwrap();
+            let tz_minute: i32 = caps.name("tz_offset_minute").and_then(|v| FromStr::from_str(v).ok()).unwrap();
             let tz_sign = if caps.name("tz_offset_sign").map_or(false, |x| x == "+") { 1 } else { -1 };
             FixedOffset::east(tz_sign * (tz_hour * 60 + tz_minute) * 60)
         } else {
             FixedOffset::east(0)  // UTC
         };
         let mut microsecond = caps.name("microsecond").unwrap_or("").to_string();
-        for _ in range(0, 6 - microsecond.len()) {
+        for _ in 0..(6 - microsecond.len()) {
             microsecond.push('0');
         }
         let dt = offset.ymd(
@@ -120,21 +120,21 @@ impl Codec<DateTime<FixedOffset>> for RFC3339 {
 }
 
 pub struct Boolean {
-    true_texts: Vec<CowString<'static>>,
-    false_texts: Vec<CowString<'static>>,
+    true_texts: Vec<Cow<'static, str>>,
+    false_texts: Vec<Cow<'static, str>>,
     default_value: bool
 }
 
 impl Boolean {
     pub fn new<T, U>(true_texts: &[T], false_texts: &[U],
                      default_value: bool) -> Boolean
-        where T: IntoCow<'static, String, str> + Clone,
-              U: IntoCow<'static, String, str> + Clone
+        where T: Into<Cow<'static, str>> + Clone,
+              U: Into<Cow<'static, str>> + Clone
     {
         Boolean {
-            true_texts: true_texts.iter().map(|t| t.clone().into_cow())
+            true_texts: true_texts.iter().map(|t| t.clone().into())
                                   .collect(),
-            false_texts: false_texts.iter().map(|t| t.clone().into_cow())
+            false_texts: false_texts.iter().map(|t| t.clone().into())
                                     .collect(),
             default_value: default_value
         }
@@ -144,15 +144,15 @@ impl Boolean {
 impl Default for Boolean {
     fn default() -> Boolean {
         Boolean {
-            true_texts: vec!["true".into_cow()],
-            false_texts: vec!["false".into_cow()],
+            true_texts: vec!["true".into()],
+            false_texts: vec!["false".into()],
             default_value: false
         }
     }
 }
 
 impl Codec<bool> for Boolean {
-    fn encode(&self, value: &bool, w: &mut Writer) -> SchemaResult<()> {
+    fn encode(&self, value: &bool, w: &mut io::Write) -> SchemaResult<()> {
         match write!(w, "{}", match *value {
             true => &self.true_texts[0],
             false => &self.false_texts[0]
@@ -163,9 +163,9 @@ impl Codec<bool> for Boolean {
     }
 
     fn decode(&self, r: &str) -> SchemaResult<bool> {
-        if self.true_texts.iter().any(|&: t| &t[] == r) {
+        if self.true_texts.iter().any(|t| &t[..] == r) {
             Ok(true)
-        } else if self.false_texts.iter().any(|&: f| &f[] == r) {
+        } else if self.false_texts.iter().any(|f| &f[..] == r) {
             Ok(false)
         } else if r.is_empty() {
             Ok(self.default_value)

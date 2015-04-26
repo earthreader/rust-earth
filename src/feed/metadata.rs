@@ -1,7 +1,6 @@
-#![unstable]
-
 use std::borrow::Cow;
 use std::default::Default;
+use std::io;
 
 use chrono::{DateTime, FixedOffset};
 
@@ -85,9 +84,9 @@ impl Default for Metadata {
 }
 
 impl FromSchemaReader for Metadata {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[]) {
+    fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
+                                   child: XmlElement<B>) -> DecodeResult<()> {
+        match (name.namespace_as_ref(), &name.local_name[..]) {
             (Some(ATOM_XMLNS), "id") => {
                 self.id = try!(child.read_whole_text());
             }
@@ -128,10 +127,9 @@ impl FromSchemaReader for Metadata {
 }
 
 impl Entity for Metadata {
-    type OwnedId = String;
-    type BorrowedId = str;
-    fn entity_id(&self) -> Cow<String, str> {
-        Cow::Borrowed(&self.id[])
+    type Id = str;
+    fn entity_id(&self) -> Cow<str> {
+        Cow::Borrowed(&self.id)
     }
 }
 

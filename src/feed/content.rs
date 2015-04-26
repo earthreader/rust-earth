@@ -1,19 +1,11 @@
-#![unstable]
-
 use super::Blob;
 
-use std::borrow::ToOwned;
 use std::default::Default;
-use std::fmt;
-use std::ops::Deref;
+use std::io;
 use std::str::{Utf8Error, from_utf8, from_utf8_unchecked};
-
-use serialize::base64;
-use serialize::base64::ToBase64;
 
 use mimetype::MimeType;
 use parser::base::{DecodeError, DecodeResult, XmlElement};
-use sanitizer::{escape, sanitize_html};
 use schema::{FromSchemaReader};
 
 /// Content construct defined in :rfc:`4287#section-4.1.3` (section 4.1.3).
@@ -25,24 +17,24 @@ pub struct Content {
 }
 
 impl Content {
-    pub fn new<T, S: ?Sized>(mimetype: MimeType, body: Vec<u8>,
-                             source_uri: Option<T>)
-                             -> Result<Content, Utf8Error>
-        where T: Deref<Target=S>, S: ToOwned<String>
+    pub fn new<T>(mimetype: MimeType, body: Vec<u8>,
+                  source_uri: Option<T>)
+                  -> Result<Content, Utf8Error>
+        where T: Into<String>
     {
         if mimetype.is_text() {
-            try!(from_utf8(&body[]));
+            try!(from_utf8(&body[..]));
         }
         Ok(Content {
             mimetype: mimetype,
             body: body,
-            source_uri: source_uri.map(|e| e.to_owned())
+            source_uri: source_uri.map(|e| e.into())
         })
     }
 
-    pub fn from_str<T, S: ?Sized>(mimetype: &str, text: String,
-                                  source_uri: Option<T>) -> Option<Content>
-        where T: Deref<Target=S>, S: ToOwned<String>
+    pub fn from_str<T>(mimetype: &str, text: String,
+                       source_uri: Option<T>) -> Option<Content>
+        where T: Into<String>
     {
         let mimetype = match mimetype {
             "text" | "" => Some(MimeType::Text),
@@ -53,7 +45,7 @@ impl Content {
             Some(Content {
                 mimetype: mimetype,
                 body: text.into_bytes(),
-                source_uri: source_uri.map(|e| e.to_owned()),
+                source_uri: source_uri.map(|e| e.into()),
             })
         } else {
             None
@@ -61,14 +53,14 @@ impl Content {
     }
 
     pub fn source_uri(&self) -> Option<&str> {
-        self.source_uri.as_ref().map(|e| &e[])
+        self.source_uri.as_ref().map(|e| &e[..])
     }
 }
 
 impl Blob for Content {
     fn mimetype(&self) -> MimeType { self.mimetype.clone() }
     fn is_text(&self) -> bool { self.mimetype.is_text() }
-    fn as_bytes(&self) -> &[u8] { &self.body[] }
+    fn as_bytes(&self) -> &[u8] { &self.body[..] }
     fn as_str(&self) -> Option<&str> {
         if self.is_text() {
             Some(unsafe { from_utf8_unchecked(self.as_bytes()) })
@@ -76,10 +68,14 @@ impl Blob for Content {
             None
         }
     }
+}
 
+#[cfg(html_sanitizer)]
+impl super::HtmlBlob for Content {
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
         Box<fmt::Display + 'a>
     {
+        use sanitizer::sanitize_html;
         match self.mimetype {
             MimeType::Text =>
                 Box::new(escape(self.as_str().unwrap(), true))
@@ -119,8 +115,8 @@ impl PartialEq for Content {
 }
 
 impl FromSchemaReader for Content {
-    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
-                            -> DecodeResult<()>
+    fn read_from<B: io::BufRead>(&mut self, element: XmlElement<B>)
+                                 -> DecodeResult<()>
     {
         let source_uri = element.get_attr("src").ok().map(|v| v.to_string());
         let mimetype = {

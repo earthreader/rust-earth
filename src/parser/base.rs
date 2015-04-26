@@ -1,8 +1,7 @@
-#![unstable]
-
 use std::borrow::ToOwned;
-use std::error::{Error, FromError};
+use std::error::Error;
 use std::fmt;
+use std::io;
 
 use xml;
 use xml::reader::events::XmlEvent as x;
@@ -57,25 +56,25 @@ impl Error for DecodeError {
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
 
-impl FromError<schema::SchemaError> for DecodeError {
-    fn from_error(e: schema::SchemaError) -> DecodeError {
+impl From<schema::SchemaError> for DecodeError {
+    fn from(e: schema::SchemaError) -> DecodeError {
         DecodeError::SchemaError(e)
     }
 }
 
 
-pub struct XmlElement<'a, B: 'a> {
+pub struct XmlElement<'a, B: io::Read + 'a> {
     pub attributes: Vec<XmlAttribute>,
     pub namespace: XmlNamespace,
     pub children: NestedEventReader<'a, B>,
 }
 
-impl<'a, B: Buffer + 'a> XmlElement<'a, B> {
+impl<'a, B: io::BufRead + 'a> XmlElement<'a, B> {
     pub fn get_attr(&self, key: &str) -> DecodeResult<&str> {
         let find_result = self.attributes.iter()
             .find(|&attr| attr.name.local_name == key);
         match find_result {
-            Some(e) => Ok(&e.value[]),
+            Some(e) => Ok(&e.value),
             None => Err(DecodeError::AttributeNotFound(key.to_owned()))
         }
     }
@@ -84,7 +83,7 @@ impl<'a, B: Buffer + 'a> XmlElement<'a, B> {
         let mut text = String::new();
         loop {
             match self.children.next() {
-                Some(NestedEvent::Characters(s)) => { text.push_str(&s[]); }
+                Some(NestedEvent::Characters(s)) => { text.push_str(&s); }
                 Some(NestedEvent::Error(e)) => {
                     return Err(DecodeError::XmlError(e));
                 }
@@ -96,14 +95,16 @@ impl<'a, B: Buffer + 'a> XmlElement<'a, B> {
     }
 }
 
-impl<'a, 'b, A: 'a, B: 'b> PartialEq<XmlElement<'b, B>> for XmlElement<'a, A> {
+impl<'a, 'b, A, B> PartialEq<XmlElement<'b, B>> for XmlElement<'a, A>
+    where A: io::Read + 'a, B: io::Read + 'b
+{
     fn eq(&self, other: &XmlElement<'b, B>) -> bool {
         self.attributes == other.attributes &&
             self.namespace == other.namespace
     }
 }
 
-impl<'a, B: 'a> fmt::Debug for XmlElement<'a, B> {
+impl<'a, B: io::Read + 'a> fmt::Debug for XmlElement<'a, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "Element("));
         let ns = &self.namespace.0;
@@ -128,12 +129,12 @@ impl<'a, B: 'a> fmt::Debug for XmlElement<'a, B> {
     }
 }
 
-pub struct NestedEventReader<'a, B: 'a> {
+pub struct NestedEventReader<'a, B: io::Read + 'a> {
     reader: &'a mut xml::EventReader<B>,
     finished: bool,
 }
 
-impl<'a, B: Buffer> NestedEventReader<'a, B> {
+impl<'a, B: io::Read> NestedEventReader<'a, B> {
     pub fn new(reader: &'a mut xml::EventReader<B>) -> NestedEventReader<'a, B> {
         NestedEventReader { reader: reader, finished: false }
     }
@@ -194,8 +195,7 @@ impl<'a, B: Buffer> NestedEventReader<'a, B> {
     }
 }
 
-#[unsafe_destructor]
-impl<'a, B: Buffer + 'a> Drop for NestedEventReader<'a, B> {
+impl<'a, B: io::Read + 'a> Drop for NestedEventReader<'a, B> {
     #[allow(unused_assignments)]
     #[inline]
     fn drop(&mut self) {
@@ -218,16 +218,17 @@ impl<'a, B: Buffer + 'a> Drop for NestedEventReader<'a, B> {
 
 mod events {
     use std::fmt;
+    use std::io;
 
     use xml::common;
-    use xml::common::{HasPosition, XmlVersion};
+    use xml::common::{Position, XmlVersion};
     use xml::reader::events::XmlEvent as x;
     use self::NestedEvent as n;
 
     use super::{XmlElement, XmlName};
 
     #[derive(PartialEq)]
-    pub enum NestedEvent<'a, B: 'a> {
+    pub enum NestedEvent<'a, B: io::Read + 'a> {
         StartDocument {
             version: XmlVersion,
             encoding: String,
@@ -249,7 +250,7 @@ mod events {
         Error(common::Error)
     }
 
-    impl<'a, B> PartialEq<x> for NestedEvent<'a, B> {
+    impl<'a, B: io::Read> PartialEq<x> for NestedEvent<'a, B> {
         fn eq(&self, other: &x) -> bool {
             match (self, other) {
                 (&n::StartDocument { version: ref v1,
@@ -283,11 +284,11 @@ mod events {
         }
     }
 
-    impl<'a, B> PartialEq<NestedEvent<'a, B>> for x {
+    impl<'a, B: io::Read> PartialEq<NestedEvent<'a, B>> for x {
         fn eq(&self, other: &NestedEvent<'a, B>) -> bool { other == self }
     }
 
-    impl<'a, B> fmt::Debug for NestedEvent<'a, B> {
+    impl<'a, B: io::Read> fmt::Debug for NestedEvent<'a, B> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match *self {
                 n::StartDocument { ref version, ref encoding, ref standalone } =>
@@ -314,7 +315,9 @@ mod events {
                     write!(f, "Whitespace({:?})", data),
                 n::Error(ref e) =>
                     write!(f, "Error(row: {}, col: {}, message: {:?})",
-                           e.row() + 1, e.col() + 1, e.msg())
+                           e.position().row + 1,
+                           e.position().column + 1,
+                           e.msg())
             }
         }
     }

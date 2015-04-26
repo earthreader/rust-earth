@@ -7,10 +7,10 @@
 //! ### Todo
 //!
 //! Parsing text construct which `type` is `"xhtml"`.
-use std::borrow::{IntoCow, ToOwned};
+use std::borrow::{Cow, ToOwned};
 use std::default::Default;
+use std::io;
 use std::str::FromStr;
-use std::string::CowString;
 
 use chrono::{DateTime, FixedOffset};
 use xml;
@@ -33,19 +33,19 @@ static XML_XMLNS: &'static str = "http://www.w3.org/XML/1998/namespace";
 
 #[derive(Clone)]
 struct AtomSession<'a> {
-    xml_base: CowString<'a>,
-    element_ns: CowString<'a>,
+    xml_base: Cow<'a, str>,
+    element_ns: Cow<'a, str>,
 }
 
 impl<'a> AtomSession<'a> {
     fn reset_xml_base(&mut self, attributes: &[XmlAttribute]) {
-        if let Some(new_base) = get_xml_base(&attributes[]) {
-            self.xml_base = new_base.to_owned().into_cow();
+        if let Some(new_base) = get_xml_base(&attributes) {
+            self.xml_base = new_base.to_owned().into();
         }
     }
 }
 
-pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool)
+pub fn parse_atom<B: io::BufRead>(xml: B, feed_url: &str, need_entries: bool)
                              -> DecodeResult<feed::Feed>
 {
     let mut parser = xml::EventReader::new(xml);
@@ -58,11 +58,11 @@ pub fn parse_atom<B: Buffer>(xml: B, feed_url: &str, need_entries: bool)
                     name.namespace_as_ref().map_or(false, |n| n == atom_xmlns)
                 }).unwrap();
                 let session = {
-                    let xml_base = get_xml_base(&element.attributes[])
+                    let xml_base = get_xml_base(&element.attributes)
                         .unwrap_or(feed_url);
                     AtomSession {
-                        xml_base: xml_base.to_owned().into_cow(),
-                        element_ns: atom_xmlns.into_cow()
+                        xml_base: xml_base.to_owned().into(),
+                        element_ns: (*atom_xmlns).into()
                     }
                 };
                 let feed_data = parse_feed(element, feed_url,
@@ -87,7 +87,7 @@ fn get_xml_base(attributes: &[XmlAttribute]) -> Option<&str> {
 }
 
 fn name_matches(name: &XmlName, namespace: Option<&str>, local_name: &str) -> bool {
-    &name.local_name[] == local_name &&
+    &name.local_name == local_name &&
         match (name.namespace_as_ref(), namespace) {
             (Some(a), Some(b)) => a == b,
             (None, None) => true,
@@ -112,7 +112,7 @@ macro_rules! parse_fields {
 macro_rules! parse_field {
     { ($target:ident, $name:expr, $elem:expr, $session:expr)
        $($attr:pat => $var:ident : $plurality:ident by $func:expr;)* } => ({
-        match &$name.local_name[] {
+        match &$name.local_name[..] {
             $(
                 $attr => {
                     let result = try!($func($elem, $session.clone()));
@@ -131,14 +131,14 @@ macro_rules! assign_field {
     ($_p:ident    : $var:expr, $value:expr) => ( $var = Some($value) )
 }
 
-fn parse_feed<B: Buffer>(mut element: XmlElement<B>, feed_url: &str,
+fn parse_feed<B: io::BufRead>(mut element: XmlElement<B>, feed_url: &str,
                          need_entries: bool, session: AtomSession)
                          -> DecodeResult<feed::Feed> {
     let mut feed: feed::Feed = Default::default();
     for_each!(event in element.children.next() {
         if let Nested { name, element: child } = event {
             if need_entries && name_matches(&name,
-                                            Some(&session.element_ns[]),
+                                            Some(&session.element_ns),
                                             "entry") {
                 let result = try!(parse_entry(child, session.clone()));
                 feed.entries.push(result);
@@ -171,7 +171,7 @@ fn parse_feed<B: Buffer>(mut element: XmlElement<B>, feed_url: &str,
     Ok(feed)
 }
 
-fn parse_entry<B: Buffer>(mut element: XmlElement<B>, session: AtomSession)
+fn parse_entry<B: io::BufRead>(mut element: XmlElement<B>, session: AtomSession)
                           -> DecodeResult<feed::Entry> {
     let mut entry: feed::Entry = Default::default();
     parse_fields! { (entry, element, session)
@@ -192,7 +192,7 @@ fn parse_entry<B: Buffer>(mut element: XmlElement<B>, session: AtomSession)
     Ok(entry)
 }
 
-fn parse_source<B: Buffer>(mut element: XmlElement<B>,
+fn parse_source<B: io::BufRead>(mut element: XmlElement<B>,
                            session: AtomSession) -> DecodeResult<feed::Source> {
     let mut source: feed::Source = Default::default();
     parse_fields! { (source, element, session)
@@ -212,14 +212,15 @@ fn parse_source<B: Buffer>(mut element: XmlElement<B>,
     Ok(source)
 }
 
-fn parse_icon<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
+fn parse_icon<B: io::BufRead>(element: XmlElement<B>, mut session: AtomSession)
                          -> DecodeResult<String> {
-    session.reset_xml_base(&element.attributes[]);
-    let xml_base = session.xml_base.into_owned();
-    Ok(xml_base + &try!(element.read_whole_text())[])
+    session.reset_xml_base(&element.attributes);
+    let mut xml_base = session.xml_base.into_owned();
+    xml_base.push_str(&try!(element.read_whole_text())[..]);
+    Ok(xml_base)
 }
 
-fn parse_text_construct<B: Buffer>(element: XmlElement<B>,
+fn parse_text_construct<B: io::BufRead>(element: XmlElement<B>,
                                    _session: AtomSession)
                                    -> DecodeResult<feed::Text>
 {
@@ -235,10 +236,10 @@ fn parse_text_construct<B: Buffer>(element: XmlElement<B>,
     Ok(text)
 }
 
-fn parse_person_construct<B: Buffer>(mut element: XmlElement<B>,
+fn parse_person_construct<B: io::BufRead>(mut element: XmlElement<B>,
                                      mut session: AtomSession)
                                      -> DecodeResult<Option<feed::Person>> {
-    session.reset_xml_base(&element.attributes[]);
+    session.reset_xml_base(&element.attributes);
     let mut person_name = Default::default();
     let mut uri = Default::default();
     let mut email = Default::default();
@@ -246,7 +247,7 @@ fn parse_person_construct<B: Buffer>(mut element: XmlElement<B>,
     for_each!(event in element.children.next() {
         match event {
             Nested { name, element: elem } => {
-                let ns = &session.element_ns[];
+                let ns = &session.element_ns;
                 if name_matches(&name, Some(ns), "name") {
                     person_name = Some(try!(elem.read_whole_text()));
                 } else if name_matches(&name, Some(ns), "uri") {
@@ -268,9 +269,9 @@ fn parse_person_construct<B: Buffer>(mut element: XmlElement<B>,
     Ok(Some(feed::Person { name: name, uri: uri, email: email }))
 }
 
-fn parse_link<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
+fn parse_link<B: io::BufRead>(element: XmlElement<B>, mut session: AtomSession)
                          -> DecodeResult<feed::Link> {
-    session.reset_xml_base(&element.attributes[]);
+    session.reset_xml_base(&element.attributes);
     Ok(feed::Link {
         uri: try!(element.get_attr("href")).to_string(),
         relation: element.get_attr("rel").unwrap_or("alternate").to_string(),
@@ -282,7 +283,7 @@ fn parse_link<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
     })
 }
 
-fn parse_datetime<B: Buffer>(element: XmlElement<B>, _session: AtomSession)
+fn parse_datetime<B: io::BufRead>(element: XmlElement<B>, _session: AtomSession)
                              -> DecodeResult<DateTime<FixedOffset>> {
     match codecs::RFC3339.decode(&*try!(element.read_whole_text())) {
         Ok(v) => Ok(v),
@@ -290,7 +291,7 @@ fn parse_datetime<B: Buffer>(element: XmlElement<B>, _session: AtomSession)
     }
 }
 
-fn parse_category<B: Buffer>(element: XmlElement<B>, _session: AtomSession)
+fn parse_category<B: io::BufRead>(element: XmlElement<B>, _session: AtomSession)
                              -> DecodeResult<feed::Category> {
     Ok(feed::Category {
         term: try!(element.get_attr("term")).to_string(),
@@ -299,9 +300,9 @@ fn parse_category<B: Buffer>(element: XmlElement<B>, _session: AtomSession)
     })
 }
 
-fn parse_generator<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
+fn parse_generator<B: io::BufRead>(element: XmlElement<B>, mut session: AtomSession)
                               -> DecodeResult<feed::Generator> {
-    session.reset_xml_base(&element.attributes[]);
+    session.reset_xml_base(&element.attributes);
     let uri = element.get_attr("uri").ok().map(|v| v.to_string());  // TODO
     let version = element.get_attr("version").ok().map(|v| v.to_string());
     Ok(feed::Generator {
@@ -311,9 +312,9 @@ fn parse_generator<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
     })
 }
 
-fn parse_content<B: Buffer>(element: XmlElement<B>, mut session: AtomSession)
+fn parse_content<B: io::BufRead>(element: XmlElement<B>, mut session: AtomSession)
                             -> DecodeResult<feed::Content> {
-    session.reset_xml_base(&element.attributes[]);
+    session.reset_xml_base(&element.attributes);
     let content_type = match element.get_attr("type") {
         Ok("text/plaln") | Ok("text") => MimeType::Text,
         Ok("text/html") | Ok("html") => MimeType::Html,

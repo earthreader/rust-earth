@@ -1,4 +1,3 @@
-#![unstable]
 //! Data structures for feeds.
 //!
 //! **rust-earth** internally stores archive data as Atom format, like
@@ -10,7 +9,7 @@
 //!
 //! [libearth]: https://github.com/earthreader/libearth
 //! [RFC 4287]: https://tools.ietf.org/html/rfc4287
-use std::fmt;
+use std::io;
 use std::str::from_utf8;
 
 use chrono::{DateTime, FixedOffset};
@@ -52,7 +51,6 @@ const ATOM_XMLNS: &'static str = "http://www.w3.org/2005/Atom";
 const MARK_XMLNS: &'static str = "http://earthreader.org/mark/";
 
 
-#[unstable]
 pub trait Blob {
     fn mimetype(&self) -> MimeType;
 
@@ -61,7 +59,10 @@ pub trait Blob {
     fn as_bytes(&self) -> &[u8];
 
     fn as_str(&self) -> Option<&str> { from_utf8(self.as_bytes()).ok() }
+}
 
+#[cfg(html_sanitizer)]
+pub trait HtmlBlob: Blob {
     /// Get the secure HTML string of the text.  If it's a plain text, this
     /// returns entity-escaped HTML string, if it's a HTML text, `value` is
     /// sanitized, and if it's a binary data, this returns base64-encoded
@@ -78,8 +79,8 @@ pub trait Blob {
         Box<fmt::Display + 'a>;
 }
 
-fn parse_datetime<B: Buffer>(element: XmlElement<B>)
-                                 -> DecodeResult<DateTime<FixedOffset>>
+fn parse_datetime<B: io::BufRead>(element: XmlElement<B>)
+                                  -> DecodeResult<DateTime<FixedOffset>>
 {
     match codecs::RFC3339.decode(&*try!(element.read_whole_text())) {
         Ok(v) => Ok(v),

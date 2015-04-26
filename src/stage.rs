@@ -1,13 +1,14 @@
-#![unstable]
-
 pub use self::dirtybuffer::DirtyBuffer;
 
 
 mod dirtybuffer {
-    use repository::{Names, Repository, RepositoryError, RepositoryResult};
+    use repository as repo;
+    use repository::{Names, Repository};
 
+    use std::borrow::ToOwned;
     use std::collections::{HashMap, HashSet};
-    use std::old_io::{BufReader, IoResult, Writer};
+    use std::collections::hash_map::Entry;
+    use std::io;
 
     enum NestedItem<K, V> {
         Item(V), Map(HashMap<K, NestedItem<K, V>>)
@@ -30,14 +31,14 @@ mod dirtybuffer {
             }
         }
 
-        pub fn flush(&mut self) -> RepositoryResult<()> {
+        pub fn flush(&mut self) -> repo::Result<()> {
             _flush(&mut self.inner, &mut self.dictionary, vec![])
         }
     }
 
     fn _flush<R: Repository>(repo: &mut R,
                              _dictionary: &mut Dictionary,
-                             _key: Vec<String>) -> RepositoryResult<()> {
+                             _key: Vec<String>) -> repo::Result<()> {
         for (k, value) in _dictionary.iter_mut() {
             let mut key = _key.clone();
             key.push(k.clone());
@@ -45,8 +46,8 @@ mod dirtybuffer {
                 NestedItem::Map(ref mut m) => { return _flush(repo, m, key); }
                 NestedItem::Item(Some(ref v)) => {
                     // TODO: merge with inner repo
-                    let mut w = try!(repo.get_writer(&key[]));
-                    try!(w.write_all(&v[]));
+                    let mut w = try!(repo.get_writer(&key));
+                    try!(w.write_all(&v));
                 }
                 _ => { /* unsure */ }
             }
@@ -56,33 +57,33 @@ mod dirtybuffer {
     }
 
     impl<R: Repository> Repository for DirtyBuffer<R> {
-        fn get_reader<'a, T: Str>(&'a self, key: &[T]) ->
-            RepositoryResult<Box<Buffer + 'a>>
+        fn get_reader<'a, T: AsRef<str>>(&'a self, key: &[T]) ->
+            repo::Result<Box<io::BufRead + 'a>>
         {
             let b = match find_item(&self.dictionary, key) {
                 FindResult::Found(&NestedItem::Item(Some(ref v))) => v,
                 FindResult::NotFound => { return self.inner.get_reader(key); }
-                _ => { return Err(RepositoryError::invalid_key(key, None)); }
+                _ => { return Err(repo::Error::invalid_key(key, None)); }
             };
-            let reader = BufReader::new(&b[]);
-            Ok(Box::new(reader) as Box<Buffer>)
+            let reader = io::BufReader::new(&b[..]);
+            Ok(Box::new(reader) as Box<io::BufRead>)
         }
 
-        fn get_writer<'a, T: Str>(&'a mut self, key: &[T]) ->
-            RepositoryResult<Box<Writer + 'a>>
+        fn get_writer<'a, T: AsRef<str>>(&'a mut self, key: &[T]) ->
+            repo::Result<Box<io::Write + 'a>>
         {
             let mut slot = match dig(&mut self.dictionary, key) {
                 Some(v) => v,
-                None => { return Err(RepositoryError::invalid_key(key, None)); }
+                None => { return Err(repo::Error::invalid_key(key, None)); }
             };
             let writer = DirtyWriter {
                 slot: slot,
                 writer: Some(Vec::new()),
             };
-            Ok(Box::new(writer) as Box<Writer>)
+            Ok(Box::new(writer) as Box<io::Write>)
         }
 
-        fn exists<T: Str>(&self, key: &[T]) -> bool {
+        fn exists<T: AsRef<str>>(&self, key: &[T]) -> bool {
             match find_item(&self.dictionary, key) {
                 FindResult::Found(_) => true,
                 FindResult::NotFound => self.inner.exists(key),
@@ -90,7 +91,7 @@ mod dirtybuffer {
             }
         }
 
-        fn list<T: Str>(&self, key: &[T]) -> RepositoryResult<Names> {
+        fn list<T: AsRef<str>>(&self, key: &[T]) -> repo::Result<Names> {
             let d = if key.is_empty() {
                 &self.dictionary
             } else {
@@ -98,7 +99,7 @@ mod dirtybuffer {
                     FindResult::Found(&NestedItem::Map(ref v)) => v,
                     FindResult::NotFound => { return self.inner.list(key); }
                     _ => {
-                        return Err(RepositoryError::invalid_key(key, None));
+                        return Err(repo::Error::invalid_key(key, None));
                     }
                 }
             };
@@ -108,11 +109,60 @@ mod dirtybuffer {
             });
             let src = match self.inner.list(key) {
                 Ok(src) => src,
-                Err(_) => { return Ok(Box::new(names) as Names); }
+                Err(_) => {
+                    let names = names.map(|k| {
+                        let v: repo::Result<_> = Ok(k);
+                        v
+                    });
+                    return Ok(Box::new(names) as Names);
+                }
             };
-            let mut names: HashSet<_> = names.collect();
-            names.extend(src);
-            Ok(Box::new(names.into_iter()) as Names)
+            let names = NameList {
+                cached: names,
+                knowns: HashSet::new(),
+                inner: src,
+            };
+            Ok(Box::new(names) as Names)
+        }
+    }
+
+    struct NameList<'a, I> where I: Iterator<Item=String> {
+        cached: I,
+        knowns: HashSet<String>,
+        inner: Names<'a>,
+    }
+
+    impl<'a, I> Iterator for NameList<'a, I> where I: Iterator<Item=String> {
+        type Item = repo::Result<String>;
+
+        fn next(&mut self) -> Option<repo::Result<String>> {
+            if let Some(v) = self.cached.next() {
+                self.knowns.insert(v.clone());
+                Some(Ok(v))
+            } else {
+                loop {
+                    match self.inner.next() {
+                        Some(Ok(v)) => {
+                            if self.knowns.contains(&v) {
+                                continue
+                            } else {
+                                return Some(Ok(v));
+                            }
+                        }
+                        x => { return x; }
+                    }
+                }
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            let (l1, u1) = self.cached.size_hint();
+            let (l2, u2) = self.inner.size_hint();
+            let upper = match (u1, u2) {
+                (Some(a), Some(b)) => Some(a + b),
+                _ => None,
+            };
+            (l1 + l2, upper)
         }
     }
 
@@ -121,16 +171,15 @@ mod dirtybuffer {
         writer: Option<Vec<u8>>,
     }
 
-    impl<'a> Writer for DirtyWriter<'a> {
-        fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
-            self.writer.as_mut().unwrap().write_all(buf)
+    impl<'a> io::Write for DirtyWriter<'a> {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.writer.as_mut().unwrap().write(buf)
         }
-        fn flush(&mut self) -> IoResult<()> {
+        fn flush(&mut self) -> io::Result<()> {
             self.writer.as_mut().unwrap().flush()
         }
     }
 
-    #[unsafe_destructor]
     impl<'a> Drop for DirtyWriter<'a> {
         fn drop(&mut self) {
             *self.slot = self.writer.take();
@@ -143,33 +192,36 @@ mod dirtybuffer {
         InvalidKey,
     }
 
-    fn find_item<'a, T: Str>(dict: &'a Dictionary, key: &[T]) ->
+    fn find_item<'a, T: AsRef<str>>(dict: &'a Dictionary, key: &[T]) ->
         FindResult<&'a NestedItem<PathKey, Option<Vec<u8>>>>
     {
         let head = match key.first() {
             Some(k) => k,
             None => { return FindResult::InvalidKey; }
         };
-        let tail = key.tail();
-        match dict.get(head.as_slice()) {
+        let tail = &key[1..];
+        match dict.get(head.as_ref()) {
             Some(v) if tail.is_empty() => FindResult::Found(v),
-            Some(&NestedItem::Map(ref m)) => find_item(m, key.tail()),
+            Some(&NestedItem::Map(ref m)) => find_item(m, &key[1..]),
             None => FindResult::NotFound,
             _ => FindResult::InvalidKey,
         }
     }
 
-    fn dig<'a, T: Str>(map: &'a mut Dictionary, key: &[T]) ->
+    fn dig<'a, T: AsRef<str>>(map: &'a mut Dictionary, key: &[T]) ->
         Option<&'a mut Option<Vec<u8>>>
     {
         let head = match key.first() {
-            Some(k) => k.as_slice().to_string(),
+            Some(k) => k.as_ref().to_owned(),
             None => { return None; }
         };
-        let tail = key.tail();
-        let mut next = match map.entry(head).get() {
-            Ok(&mut NestedItem::Map(ref mut m)) => m,
-            Err(slot) => {
+        let tail = &key[1..];
+        let mut next = match map.entry(head) {
+            Entry::Occupied(slot) => match slot.into_mut() {
+                &mut NestedItem::Map(ref mut m) => m,
+                _ => { return None; }
+            },
+            Entry::Vacant(slot) => {
                 if tail.is_empty() {
                     match slot.insert(NestedItem::Item(None)) {
                         &mut NestedItem::Item(ref mut v) => {
@@ -184,7 +236,6 @@ mod dirtybuffer {
                     }
                 }
             }
-            _ => { return None; }
         };
         dig(next, tail)
     }

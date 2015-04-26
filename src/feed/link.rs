@@ -1,9 +1,8 @@
-#![unstable]
-
-use std::borrow::ToOwned;
+use std::borrow::{Borrow, ToOwned};
 use std::default::Default;
 use std::fmt;
-use std::iter::{FromIterator, Filter};
+use std::io;
+use std::iter::{FromIterator, IntoIterator};
 use std::mem::swap;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
@@ -18,7 +17,6 @@ use util::merge_vec;
 /// Link element defined in RFC 4287 (section 4.2.7).
 ///
 /// RFC: <https://tools.ietf.org/html/rfc4287#section-4.2.7>.
-#[unstable]
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Link {
     /// The link's required URI.  It corresponds to `href` attribute of
@@ -72,22 +70,20 @@ pub struct Link {
 }
 
 impl Link {
-    #[unstable]
-    pub fn new<T, S: ?Sized>(uri: T) -> Link
-        where T: Deref<Target=S>, S: ToOwned<String>
+    pub fn new<T>(uri: T) -> Link
+        where T: Into<String>
     {
         Link {
-            uri: uri.to_owned(), relation: "alternate".to_owned(),
+            uri: uri.into(), relation: "alternate".to_owned(),
             mimetype: None, language: None, title: None, byte_size: None
         }   
     }
 
     /// Whether its `mimetype` is HTML (or XHTML).
-    #[unstable]
     pub fn is_html(&self) -> bool {
         if let Some(ref mimetype) = self.mimetype {
-            let pat = regex!(r#"^\s*([^;/\s]+/[^;/\s]+)\s*(?:;\s*.*)?$"#);
-            if let Some(c) = pat.captures(&mimetype[]) {
+            let pat = Regex::new(r#"^\s*([^;/\s]+/[^;/\s]+)\s*(?:;\s*.*)?$"#).unwrap();
+            if let Some(c) = pat.captures(&mimetype[..]) {
                 if let Some(mimetype) = c.at(1) {
                     return ["text/html", "application/xhtml+xml"]
                         .contains(&mimetype);
@@ -126,8 +122,8 @@ impl<'a> fmt::Display for ForHtml<'a, Link> {
 }
 
 impl FromSchemaReader for Link {
-    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
-                            -> DecodeResult<()>
+    fn read_from<B: io::BufRead>(&mut self, element: XmlElement<B>)
+                                 -> DecodeResult<()>
     {
         self.uri = try!(element.get_attr("href")).to_owned();
         self.relation = element.get_attr("rel")
@@ -144,29 +140,43 @@ impl FromSchemaReader for Link {
     }
 }
 
-
-#[unstable]
-pub enum Predicate<'a> {
-    #[doc(hidden)] Simple(&'a str),
-    #[doc(hidden)] Regex(Regex)
+pub struct FilterByMimeType<'a, I, T> where I: Iterator<Item=T>, T: Borrow<Link> {
+    inner: I,
+    condition: Condition<'a>,
 }
 
-impl<'a, 'b, 'c> Fn<(&'c &'b Link,)> for Predicate<'a> {
-    type Output = bool;
-    extern "rust-call" fn call(&self, args: (&'c &'b Link,)) -> bool {
-        let (l,) = args;
-        match (l.mimetype.as_ref(), self) {
-            (None, _) => false,
-            (Some(ref t), &Predicate::Simple(ref pattern)) =>
-                &t[] == *pattern,
-            (Some(ref t), &Predicate::Regex(ref pattern)) =>
-                pattern.is_match(&t[]),
+pub enum Condition<'a> {
+    Regex(Regex),
+    Simple(&'a str),
+}
+
+impl<'a, I, T> Iterator for FilterByMimeType<'a, I, T>
+    where I: Iterator<Item=T>, T: Borrow<Link>
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        if let Some(link) = self.inner.next() {
+            let matched = if let Some(t) = link.borrow().mimetype.as_ref() {
+                match self.condition {
+                    Condition::Regex(ref r) => r.is_match(t),
+                    Condition::Simple(ref s) => s == t,
+                }
+            } else {
+                false
+            };
+            return if matched { Some(link) } else { None };
         }
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.inner.size_hint().1)
     }
 }
 
-#[unstable]
-pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
+
+pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + Sized {
     /// Filter links by their `mimetype` e.g.:
     ///
     /// ```
@@ -185,10 +195,10 @@ pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
     /// # ;
     /// ```
     fn filter_by_mimetype<'b>(self, pattern: &'b str) ->
-        Filter<Self, Predicate<'b>>
+        FilterByMimeType<Self, &'a Link>
     {
         use regex;
-        if pattern.contains_char('*') {
+        let cond = if pattern.contains('*') {
             let mut regex_str = "^".to_string();
             let mut first = true;
             for part in pattern.split('*') {
@@ -197,26 +207,30 @@ pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
                 } else {
                     regex_str.push_str(".+?")
                 }
-                regex_str.push_str(&regex::quote(part)[]);
+                regex_str.push_str(&regex::quote(part));
             }
             regex_str.push('$');
-            let regex = Regex::new(&regex_str[]);
+            let regex = Regex::new(&regex_str);
             let regex = regex.unwrap();
-            self.filter(Predicate::Regex(regex))
+            Condition::Regex(regex)
         } else {
-            self.filter(Predicate::Simple(pattern))
-        }
+            Condition::Simple(pattern)
+        };
+        FilterByMimeType { inner: self, condition: cond }
     }
 
     fn permalink(self) -> Option<&'a Link> {
-        self.filter_map(|link| {
+        let mut result = None;
+        let mut score = (false, false);
+        for link in self {
             let rel_is_alternate = link.relation == "alternate";
-            if link.is_html() || rel_is_alternate {
-                Some((link, (link.is_html(), rel_is_alternate)))
-            } else {
-                None
+            let new_score = (link.is_html(), rel_is_alternate);
+            if score < new_score {
+                result = Some(link);
+                score = new_score;
             }
-        }).max_by(|pair| pair.1).map(|pair| pair.0)
+        }
+        result
     }
 
     fn favicon(self) -> Option<&'a Link> {
@@ -232,7 +246,6 @@ pub trait LinkIteratorExt<'a>: Iterator<Item=&'a Link> + IteratorExt {
 impl<'a, I: Iterator<Item=&'a Link>> LinkIteratorExt<'a> for I { }
 
 
-#[deprecated = "wondering where this struct is needed"]
 #[derive(Default, Debug)]
 pub struct LinkList(pub Vec<Link>);
 
@@ -250,7 +263,7 @@ impl DerefMut for LinkList {
 }
 
 impl FromIterator<Link> for LinkList {
-    fn from_iter<T: Iterator<Item=Link>>(iterator: T) -> Self {
+    fn from_iter<T: IntoIterator<Item=Link>>(iterator: T) -> Self {
         LinkList(FromIterator::from_iter(iterator))
     }
 }
@@ -375,7 +388,7 @@ mod test {
             .collect();
         assert_eq!(result.len(), 2);
         assert_eq!(result.iter()
-                   .map(|link| &link.mimetype.as_ref().unwrap()[])
+                   .map(|link| &link.mimetype.as_ref().unwrap())
                    .collect::<Vec<_>>(),
                    ["text/html", "text/html"]);
         let result: Vec<_> = links.iter()
@@ -383,7 +396,7 @@ mod test {
             .collect();
         assert_eq!(result.len(), 3);
         assert_eq!(result.iter()
-                   .map(|link| &link.mimetype.as_ref().unwrap()[])
+                   .map(|link| &link.mimetype.as_ref().unwrap())
                    .collect::<Vec<_>>(),
                    ["application/json",
                     "application/xml+atom",

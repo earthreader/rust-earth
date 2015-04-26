@@ -1,4 +1,3 @@
-#![unstable]
 //! Abstracts storage backend e.g. filesystem.
 //!
 //! There might be platforms that have no chance to directly access file system
@@ -9,48 +8,51 @@
 //!
 //! [Dropbox]: http://dropbox.com/
 //! [Google Drive]: https://drive.google.com/
-use std::error::{Error, FromError};
+use std::borrow::ToOwned;
+use std::error::Error as ErrorTrait;
 use std::fmt;
-use std::old_io::IoError;
+use std::io;
+use std::iter::IntoIterator;
+use std::path::PathBuf;
 
 pub use self::utils::{Bytes, Names};
 pub use self::fs::FileSystemRepository;
 
 pub mod fs;
 
-pub type RepositoryResult<T> = Result<T, RepositoryError>;
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Debug)]
-pub enum RepositoryError {
-    InvalidKey(Vec<String>, Option<IoError>),
+pub enum Error {
+    InvalidKey(Vec<String>, Option<io::Error>),
     InvalidUrl(&'static str),
-    NotADirectory(Path),
+    NotADirectory(PathBuf),
     CannotBorrow,
-    Io(IoError),
+    Io(io::Error),
 }
 
-impl RepositoryError {
+impl Error {
     #[inline]
-    pub fn invalid_key<T: Str>(key: &[T], cause: Option<IoError>) ->
-        RepositoryError
+    pub fn invalid_key<T: AsRef<str>>(key: &[T], cause: Option<io::Error>) ->
+        Error
     {
         let copied_key = key.iter()
-            .map(|e| e.as_slice().to_string())
+            .map(|e| e.as_ref().to_owned())
             .collect();
-        RepositoryError::InvalidKey(copied_key, cause)
+        Error::InvalidKey(copied_key, cause)
     }
 
     #[inline]
-    pub fn invalid_url(detail: &'static str) -> RepositoryError {
-        RepositoryError::InvalidUrl(detail)
+    pub fn invalid_url(detail: &'static str) -> Error {
+        Error::InvalidUrl(detail)
     }
 }
 
-impl fmt::Display for RepositoryError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{}", self.description()));
         match *self {
-            RepositoryError::InvalidKey(ref key, _) => {
+            Error::InvalidKey(ref key, _) => {
                 try!(write!(f, ": ["));
                 let mut first = true;
                 for i in key.iter() {
@@ -59,7 +61,7 @@ impl fmt::Display for RepositoryError {
                 }
                 try!(write!(f, "]"));
             }
-            RepositoryError::InvalidUrl(ref msg) => {
+            Error::InvalidUrl(ref msg) => {
                 try!(write!(f, ": {}", msg));
             }
             _ => { }
@@ -71,29 +73,29 @@ impl fmt::Display for RepositoryError {
     }
 }
 
-impl Error for RepositoryError {
+impl ::std::error::Error for Error {
     fn description(&self) -> &str {
         match *self {
-            RepositoryError::InvalidKey(_, _) => "invalid key",
-            RepositoryError::InvalidUrl(_) => "invalid URL",
-            RepositoryError::NotADirectory(_) => "not a directory",
-            RepositoryError::CannotBorrow => "can't borrow",
-            RepositoryError::Io(_) => "IO error"
+            Error::InvalidKey(_, _) => "invalid key",
+            Error::InvalidUrl(_) => "invalid URL",
+            Error::NotADirectory(_) => "not a directory",
+            Error::CannotBorrow => "can't borrow",
+            Error::Io(_) => "IO error"
         }
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&::std::error::Error> {
         match *self {
-            RepositoryError::InvalidKey(_, Some(ref err)) => Some(err as &Error),
-            RepositoryError::Io(ref err) => Some(err as &Error),
+            Error::InvalidKey(_, Some(ref err)) => Some(err as &::std::error::Error),
+            Error::Io(ref err) => Some(err as &::std::error::Error),
             _ => None
         }
     }
 }
 
-impl FromError<IoError> for RepositoryError {
-    fn from_error(err: IoError) -> RepositoryError {
-        RepositoryError::Io(err)
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Error {
+        Error::Io(err)
     }
 }
 
@@ -116,39 +118,41 @@ impl FromError<IoError> for RepositoryError {
 /// ```
 pub trait Repository {
     /// Read the content from the `key`.
-    fn get_reader<'a, T: Str>(&'a self, key: &[T]) ->
-        RepositoryResult<Box<Buffer + 'a>>;
+    fn get_reader<'a, T>(&'a self, key: &[T]) -> Result<Box<io::BufRead + 'a>>
+        where T: AsRef<str>;
 
     /// Get a writer to write data into the ``key``.
-    fn get_writer<'a, T: Str>(&'a mut self, key: &[T]) ->
-        RepositoryResult<Box<Writer + 'a>>;
+    fn get_writer<'a, T>(&'a mut self, key: &[T]) -> Result<Box<io::Write + 'a>>
+        where T: AsRef<str>;
 
-    fn read<T: Str>(&self, key: &[T]) -> RepositoryResult<Vec<u8>> {
-        Ok(try!(try!(self.get_reader(key)).read_to_end()))
+    fn read<T>(&self, key: &[T], buf: &mut Vec<u8>) -> Result<usize>
+        where T: AsRef<str>
+    {
+        Ok(try!(try!(self.get_reader(key)).read_to_end(buf)))
     }
 
-    fn write<T: Str, U: Bytes>(&mut self, key: &[T], buf: &[U]) ->
-        RepositoryResult<()>
+    fn write<T, U, I>(&mut self, key: &[T], buf: I) -> Result<()>
+        where T: AsRef<str>, U: Bytes, I: IntoIterator<Item=U>
     {
         let mut w = try!(self.get_writer(key));
-        for b in buf.iter() {
+        for b in buf {
             try!(w.write_all(b.as_bytes()));
         }
         Ok(())
     }
 
     /// Return whether the `key` exists or not.
-    fn exists<T: Str>(&self, key: &[T]) -> bool;
+    fn exists<T: AsRef<str>>(&self, key: &[T]) -> bool;
 
     /// List all subkeys in the `key`.
-    fn list<'a, T: Str>(&'a self, key: &[T]) -> RepositoryResult<Names<'a>>;
+    fn list<'a, T: AsRef<str>>(&'a self, key: &[T]) -> Result<Names<'a>>;
 }
 
 pub trait ToRepository<R: Repository> {
     /// Create a new instance of the repository from itself.
     /// It may be used for configuring the repository in plain text
     /// e.g. `*.ini`.
-    fn to_repo(&self) -> RepositoryResult<R>;
+    fn to_repo(&self) -> Result<R>;
 
     /// Generate a value that `to_repo()` can accept.
     /// It's used for configuring the repository in plain text
@@ -158,7 +162,7 @@ pub trait ToRepository<R: Repository> {
 }
 
 mod utils {
-    pub type Names<'a> = Box<Iterator<Item=String> + 'a>;
+    pub type Names<'a> = Box<Iterator<Item=super::Result<String>> + 'a>;
 
     pub trait Bytes {
         fn as_bytes<'a>(&'a self) -> &'a [u8];
@@ -169,15 +173,15 @@ mod utils {
     }
 
     impl Bytes for Vec<u8> {
-        fn as_bytes(&self) -> &[u8] { &self[] }
+        fn as_bytes(&self) -> &[u8] { &self }
     }
 
     impl Bytes for str {
-        fn as_bytes(&self) -> &[u8] { StrExt::as_bytes(self) }
+        fn as_bytes(&self) -> &[u8] { str::as_bytes(self) }
     }
 
     impl Bytes for String {
-        fn as_bytes(&self) -> &[u8] { StrExt::as_bytes(&self[]) }
+        fn as_bytes(&self) -> &[u8] { str::as_bytes(&self) }
     }
 
     impl<'a, T: ?Sized + Bytes> Bytes for &'a T {
@@ -188,33 +192,32 @@ mod utils {
 #[cfg(test)]
 #[macro_use]
 pub mod test {
-    use super::{Names, Repository, RepositoryError, RepositoryResult};
+    use super::{Names, Repository};
 
     use std::borrow::ToOwned;
     use std::collections::BTreeSet;
-    use std::old_io::fs::PathExtensions;
-    use std::old_io::util::{NullReader, NullWriter};
+    use std::io;
 
     struct RepositoryImplemented;
     
     impl Repository for RepositoryImplemented {
-        fn get_reader<T: Str>(&self, _key: &[T]) ->
-            RepositoryResult<Box<Buffer>>
+        fn get_reader<T: AsRef<str>>(&self, _key: &[T]) ->
+            super::Result<Box<io::BufRead>>
         {
-            Ok(Box::new(NullReader) as Box<Buffer>)
+            Ok(Box::new(NullReader) as Box<io::BufRead>)
         }
 
-        fn get_writer<T: Str>(&mut self, _key: &[T]) ->
-            RepositoryResult<Box<Writer>>
+        fn get_writer<T: AsRef<str>>(&mut self, _key: &[T]) ->
+            super::Result<Box<io::Write>>
         {
-            Ok(Box::new(NullWriter) as Box<Writer>)
+            Ok(Box::new(NullWriter) as Box<io::Write>)
         }
 
-        fn exists<T: Str>(&self, _key: &[T]) -> bool {
+        fn exists<T: AsRef<str>>(&self, _key: &[T]) -> bool {
             true
         }
 
-        fn list<T: Str>(&self, _key: &[T]) -> RepositoryResult<Names> {
+        fn list<T: AsRef<str>>(&self, _key: &[T]) -> RepositoryResult<Names> {
             struct Empty<'a>;
             impl<'a> Iterator for Empty<'a> {
                 type Item = String;

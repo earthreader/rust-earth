@@ -1,132 +1,154 @@
-use super::{Names, Repository, RepositoryError, RepositoryResult,
-            ToRepository};
+use super::{Names, Repository, ToRepository};
 
-use std::error::FromError;
-use std::old_io;
-use std::old_io::{BufferedReader, FileAccess, FileMode, IoError, IoErrorKind};
-use std::old_io::fs::{File, PathExtensions, readdir, mkdir_recursive};
+use std::borrow::ToOwned;
+use std::io;
+use std::iter::IntoIterator;
+use std::fs::{File, OpenOptions, PathExt, create_dir_all, metadata, read_dir};
+use std::path::{Path, PathBuf};
 
 use url::{Url};
-
-const ENOENT: usize = 2;  // from `libc` crate
 
 /// Builtin implementation of `Repository` trait which uses the ordinary
 /// file system.
 pub struct FileSystemRepository {
-    path: Path,
+    path: PathBuf,
 }
 
 impl FileSystemRepository {
-    pub fn from_path(path: &Path, mkdir: bool) ->
-        RepositoryResult<FileSystemRepository>
+    pub fn from_path<P>(path: P, mkdir: bool) ->
+        super::Result<FileSystemRepository>
+        where P: AsRef<Path>
     {
-        if !path.exists() {
+        let path = path.as_ref();
+        if !_exists(path) {
             if mkdir {
-                match mkdir_recursive(path, old_io::USER_DIR) {
-                    Ok(_) => { }
-                    Err(err) => match err.kind {
-                        IoErrorKind::PathAlreadyExists => { }
-                        _ => { return Err(FromError::from_error(err)) }
+                if let Err(err) = create_dir_all(path) {
+                    match err.kind() {
+                        io::ErrorKind::AlreadyExists => { }
+                        _ => { return Err(From::from(err)) }
                     }
                 }
             } else {
-                return Err(FromError::from_error(
-                    IoError::from_errno(ENOENT, false)));
+                return Err(From::from(
+                    io::Error::new(io::ErrorKind::NotFound, "Invalid path")));
             }
         }
-        if !path.is_dir() {
-            return Err(RepositoryError::NotADirectory(path.clone()));
+        if !_is_dir(&path) {
+            return Err(super::Error::NotADirectory(path.into()));
         }
         Ok(FileSystemRepository {
-            path: path.clone()
+            path: path.into()
         })
     }
 }
 
-fn _join<'a, T: Str + 'a, I: Iterator<Item=&'a T>>(p: &Path, key: I) -> Path {
+fn _join<'a, T, I>(p: &PathBuf, key: I) -> PathBuf
+    where T: AsRef<str> + 'a, I: IntoIterator<Item=T>
+{
     let mut p = p.clone();
     for k in key {
-        p = p.join(k.as_slice());
+        p.push(k.as_ref());
     }
     p
 }
 
+fn _exists<P>(path: P) -> bool where P: AsRef<Path> { metadata(path).is_ok() }
+
+fn _is_file<P>(path: P) -> bool where P: AsRef<Path> {
+    metadata(path).ok().map_or(false, |m| m.is_file())
+}
+
+fn _is_dir<P>(path: P) -> bool where P: AsRef<Path> {
+    metadata(path).ok().map_or(false, |m| m.is_dir())
+}
+
 impl Repository for FileSystemRepository {
-    fn get_reader<'a, T: Str>(&'a self, key: &[T]) ->
-        RepositoryResult<Box<Buffer + 'a>>
+    fn get_reader<'a, T: AsRef<str>>(&'a self, key: &[T]) ->
+        super::Result<Box<io::BufRead + 'a>>
     {
         let path = _join(&self.path, key.iter());
-        if !path.is_file() {
-            return Err(RepositoryError::invalid_key(key, None));
+        if !_is_file(&path) {
+            return Err(super::Error::invalid_key(key, None));
         }
         let file = try!(File::open(&path));
-        Ok(Box::new(BufferedReader::new(file)) as Box<Buffer>)
+        Ok(Box::new(io::BufReader::new(file)) as Box<io::BufRead>)
     }
 
-    fn get_writer<'a, T: Str>(&'a mut self, key: &[T]) ->
-        RepositoryResult<Box<Writer + 'a>>
+    fn get_writer<'a, T: AsRef<str>>(&'a mut self, key: &[T]) ->
+        super::Result<Box<io::Write + 'a>>
     {
-        let path = _join(&self.path, key.iter());
-        let dir_path = path.dir_path();
-        if !dir_path.exists() {
-            match mkdir_recursive(&dir_path, old_io::USER_DIR) {
+        let path = _join(&self.path, key);
+        let dir_path = path.parent();
+        if dir_path.map_or(false, |p| !_exists(p)) {
+            match create_dir_all(&dir_path.unwrap()) {
                 Ok(_) => { }
-                Err(e) => match e.kind {
-                    IoErrorKind::PathAlreadyExists => {
-                        return Err(RepositoryError::invalid_key(key, Some(e)));
+                Err(e) => match e.kind() {
+                    io::ErrorKind::AlreadyExists => {
+                        return Err(super::Error::invalid_key(key, Some(e)));
                     }
                     _ => {
-                        return Err(FromError::from_error(e));
+                        return Err(From::from(e));
                     }
                 }
             }
         }
-        if path.is_dir() {  // additional check for windows
-            return Err(RepositoryError::invalid_key(key, None));
+        if _is_dir(&path) {  // additional check for windows
+            return Err(super::Error::invalid_key(key, None));
         }
-        let file_res = File::open_mode(&path,
-                                       FileMode::Open,
-                                       FileAccess::Write);
+        let file_res = OpenOptions::new()
+            .read(false)
+            .write(true)
+            .create(false)
+            .truncate(true)
+            .open(&path);
         let file = match file_res {
             Ok(f) => f,
-            Err(e) => return Err(RepositoryError::invalid_key(key, Some(e))),
+            Err(e) => return Err(super::Error::invalid_key(key, Some(e))),
         };
-        Ok(Box::new(file) as Box<Writer>)
+        Ok(Box::new(file) as Box<io::Write>)
     }
 
-    fn exists<T: Str>(&self, key: &[T]) -> bool {
-        PathExtensions::exists(&_join(&self.path, key.iter()))
+    fn exists<T: AsRef<str>>(&self, key: &[T]) -> bool {
+        _exists(_join(&self.path, key.iter()))
     }
 
-    fn list<'a, T: Str>(&'a self, key: &[T]) -> RepositoryResult<Names> {
-        use std::str::from_utf8;
-        let names = match readdir(&_join(&self.path, key.iter())) {
+    fn list<'a, T: AsRef<str>>(&'a self, key: &[T]) -> super::Result<Names> {
+        let names = match read_dir(&_join(&self.path, key.iter())) {
             Ok(v) => v,
-            Err(e) => return Err(RepositoryError::invalid_key(key, Some(e))),
+            Err(e) => return Err(super::Error::invalid_key(key, Some(e))),
         };
-        let iter = names.into_iter().filter_map(|path| {
-            path.filename()
-                .and_then(|p| from_utf8(p).ok())
-                .map(|v| v.to_string())
+        let iter = names.filter_map(|entry| {
+            match entry {
+                Ok(v) => {
+                    let path = v.path();
+                    let name = path.file_name().and_then(|s| s.to_str());
+                    if let Some(name) = name {
+                        Some(Ok(name.to_owned()))
+                    } else {
+                        None
+                    }
+                }
+                Err(e) => Some(Err(super::Error::Io(e))),
+            }
         });
         Ok(Box::new(iter) as Names)
     }
 }
 
 impl ToRepository<FileSystemRepository> for Url {
-    fn to_repo(&self) -> RepositoryResult<FileSystemRepository> {
+    fn to_repo(&self) -> super::Result<FileSystemRepository> {
         if self.scheme != "file" {
-            return Err(RepositoryError::invalid_url(
+            return Err(super::Error::invalid_url(
                 "FileSystemRepository only accepts file:// scheme"));
         } else if self.query != None || self.fragment != None {
-            return Err(RepositoryError::invalid_url(
+            return Err(super::Error::invalid_url(
                 concat!("file:// must not contain any host/port/user/",
                         "password/parameters/query/fragment")));
         }
         let path = match self.to_file_path() {
             Ok(p) => p,
             Err(_) => {
-                return Err(RepositoryError::invalid_url("invalid file path"));
+                return Err(super::Error::invalid_url("invalid file path"));
             }
         };
         FileSystemRepository::from_path(&path, true)
@@ -148,12 +170,14 @@ mod test {
     use test_utils::temp_dir;
     use super::super::test::test_repository;
 
-    use super::super::{Repository, RepositoryError, ToRepository};
+    use super::super::{Repository, ToRepository};
+    use super::super::Error as RepositoryError;
     use super::FileSystemRepository as FsRepo;
 
     use std::collections::BTreeSet;
-    use std::old_io::{File, IoErrorKind, USER_DIR};
-    use std::old_io::fs::{PathExtensions, mkdir_recursive};
+    use std::io;
+    use std::io::USER_DIR;
+    use std::fs::{File, PathExt, create_dir_all};
 
     use url::Url;
 
@@ -325,7 +349,7 @@ mod test {
         let path = tmpdir.path().join("not-exist");
         assert_err!(FsRepo::from_path(&path, false),
                     RepositoryError::Io(e) => {
-                        assert_eq!(e.kind, IoErrorKind::FileNotFound);
+                        assert_eq!(e.kind(), io::ErrorKind::FileNotFound);
                     });
         let _f = FsRepo::from_path(&path, true);
         assert!(path.is_dir());

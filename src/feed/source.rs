@@ -1,6 +1,5 @@
-#![unstable]
-
 use std::default::Default;
+use std::io;
 use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
@@ -62,9 +61,9 @@ impl Source {
 }
 
 impl FromSchemaReader for Source {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[]) {
+    fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
+                                   child: XmlElement<B>) -> DecodeResult<()> {
+        match (name.namespace_as_ref(), &name.local_name[..]) {
             (Some(ATOM_XMLNS), "subtitle") => {
                 *set_default(&mut self.subtitle) =
                     try!(FromSchemaReader::build_from(child));

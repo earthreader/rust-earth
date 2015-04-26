@@ -1,7 +1,6 @@
-#![unstable]
-
 use std::borrow::Cow;
 use std::default::Default;
+use std::io;
 
 use chrono::{DateTime, FixedOffset};
 
@@ -25,12 +24,11 @@ pub struct Mark {
 }
 
 impl Entity for Mark {
-    type OwnedId = ();
-    type BorrowedId = ();
+    type Id = ();
 
     /// If there are two or more marks that have the same tag name, these
     /// are all should be merged into one.
-    fn entity_id(&self) -> Cow<(), ()> { Cow::Owned(()) }
+    fn entity_id(&self) -> Cow<()> { Cow::Owned(()) }
 }
 
 impl Mergeable for Mark {
@@ -45,8 +43,8 @@ impl Mergeable for Mark {
 }
 
 impl FromSchemaReader for Mark {
-    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
-                            -> DecodeResult<()>
+    fn read_from<B: io::BufRead>(&mut self, element: XmlElement<B>)
+                                 -> DecodeResult<()>
     {
         self.updated_at = {
             let updated_at = try!(element.get_attr("updated"));
@@ -54,7 +52,7 @@ impl FromSchemaReader for Mark {
         };
         let content = try!(element.read_whole_text());
         let codec: codecs::Boolean = Default::default();
-        self.marked = try!(codec.decode(&content[]));
+        self.marked = try!(codec.decode(&content));
         Ok(())
     }        
 }

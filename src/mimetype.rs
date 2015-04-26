@@ -1,5 +1,3 @@
-#![unstable]
-
 use std::borrow::ToOwned;
 use std::fmt;
 
@@ -13,16 +11,19 @@ pub enum MimeType {
     Other(String),
 }
 
-static MIMETYPE_PATTERN: regex::Regex = regex!(concat!(
-    r#"^"#,
-    r#"(?P<type>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
-    r#"/"#,
-    r#"(?P<subtype>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
-    r#"$"#));
+fn mimetype_pattern() -> regex::Regex {
+    regex::Regex::new(concat!(
+        r#"^"#,
+        r#"(?P<type>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
+        r#"/"#,
+        r#"(?P<subtype>[A-Za-z0-9!#$&.+^_-]{1,127})"#,
+        r#"$"#
+    )).unwrap()
+}
 
 impl MimeType {
     pub fn from_str(mimetype: &str) -> Option<MimeType> {
-        let captures = MIMETYPE_PATTERN.captures(mimetype);
+        let captures = mimetype_pattern().captures(mimetype);
         if let Some(captures) = captures {
             Some(match (captures.name("type"), captures.name("subtype")) {
                 (Some("text"), Some("plain")) => MimeType::Text,
@@ -40,11 +41,10 @@ impl MimeType {
             MimeType::Text => "text/plain",
             MimeType::Html => "text/html",
             MimeType::Xhtml => "application/xhtml+xml",
-            MimeType::Other(ref mimetype) => &mimetype[],
+            MimeType::Other(ref mimetype) => &mimetype,
         }
     }
 
-    #[unstable = "incomplete"]
     pub fn is_text(&self) -> bool {
         match *self {
             MimeType::Other(ref _mimetype) => false,

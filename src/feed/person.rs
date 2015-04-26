@@ -1,10 +1,7 @@
-#![unstable]
-
-use std::borrow::ToOwned;
 use std::default::Default;
 use std::fmt;
+use std::io;
 use std::mem::swap;
-use std::ops::Deref;
 
 use html::ForHtml;
 use parser::base::{DecodeResult, DecodeError, XmlElement, XmlName};
@@ -16,7 +13,6 @@ use util::{merge_vec, set_default};
 /// Person construct defined in RFC 4287 (section 3.2).
 ///
 /// RFC: <https://tools.ietf.org/html/rfc4287#section-3.2>
-#[unstable]
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct Person {
     /// The human-readable name for the person.  It corresponds to
@@ -40,10 +36,10 @@ pub struct Person {
 }
 
 impl Person {
-    pub fn new<T, S: ?Sized>(name: T) -> Person
-        where T: Deref<Target=S>, S: ToOwned<String>
+    pub fn new<T>(name: T) -> Person
+        where T: Into<String>
     {
-        Person { name: name.to_owned(), uri: None, email: None }
+        Person { name: name.into(), uri: None, email: None }
     }
 }
 
@@ -63,16 +59,16 @@ impl fmt::Display for Person {
 
 impl<'a> fmt::Display for ForHtml<'a, Person> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = escape(&self.name[], true);
+        let name = escape(&self.name, true);
         let hyperlink = match (self.uri.as_ref(), self.email.as_ref()) {
             (Some(uri), _) => {
                 try!(write!(f, "<a href=\"{}\">",
-                            escape(&uri[], true)));
+                            escape(&uri, true)));
                 true
             }
             (None, Some(email)) => {
                 try!(write!(f, "<a href=\"mailto:{}\">",
-                            escape(&email[], true)));
+                            escape(&email, true)));
                 true
             }
             (None, None) => { false }
@@ -86,8 +82,8 @@ impl<'a> fmt::Display for ForHtml<'a, Person> {
 }
 
 impl FromSchemaReader for Option<Person> {
-    fn read_from<B: Buffer>(&mut self, mut element: XmlElement<B>)
-                            -> DecodeResult<()>
+    fn read_from<B: io::BufRead>(&mut self, mut element: XmlElement<B>)
+                                 -> DecodeResult<()>
     {
         *self = None;
         loop {
@@ -105,11 +101,11 @@ impl FromSchemaReader for Option<Person> {
         Ok(())
     }
 
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
-                              element: XmlElement<B>)
-                              -> DecodeResult<()>
+    fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
+                                   element: XmlElement<B>)
+                                   -> DecodeResult<()>
     {
-        match &name.local_name[] {
+        match &name.local_name[..] {
             "name" => {
                 let name = try!(element.read_whole_text());
                 set_default(self).name = name;

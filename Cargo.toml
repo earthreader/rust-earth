@@ -15,20 +15,11 @@ name = "earth"
 path = "src/lib.rs"
 
 [dependencies]
-chrono = "*"
+chrono = {git = "https://github.com/lifthrasiir/rust-chrono.git"}
 regex = "*"
-regex_macros = "*"
 rustc-serialize = "*"
+tempdir = "*"
 time = "*"
 url = "*"
 xml-rs = "*"
-
-[dependencies.html5ever]
-# workaround again
-git = "https://github.com/Kroisse/html5ever.git"
-
-[dependencies.string_cache]
-git = "https://github.com/servo/string-cache"
-
-[dependencies.string_cache_plugin]
-git = "https://github.com/servo/string-cache"
+# html5ever = {git = "https://github.com/servo/html5ever.git"}

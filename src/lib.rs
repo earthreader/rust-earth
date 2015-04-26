@@ -15,20 +15,18 @@
 #![doc(html_logo_url = "http://libearth.earthreader.org/en/0.2.0/_static/libearth.svg",
        html_favicon_url = "http://earthreader.org/favicon.ico",
        html_root_url = "http://earthreader.org/rust-earth/")]
-#![feature(plugin, unboxed_closures, unsafe_destructor)]
-#![feature(collections, core, hash, io, path, std_misc)]
-#![plugin(regex_macros)]
-#![plugin(string_cache_plugin)]
-
-extern crate "rustc-serialize" as serialize;
-extern crate regex;
-extern crate time;
+#![cfg_attr(html_sanitizer, plugin(string_cache_plugin))]
 
 extern crate chrono;
-extern crate html5ever;
-extern crate string_cache;
+extern crate rustc_serialize as serialize;
+extern crate regex;
+extern crate tempdir;
+extern crate time;
 extern crate url;
 extern crate xml;
+
+#[cfg(html_sanitizer)] extern crate html5ever;
+#[cfg(html_sanitizer)] extern crate string_cache;
 
 pub mod macros;
 pub mod test_utils;

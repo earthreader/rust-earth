@@ -1,7 +1,7 @@
 #![macro_use]
 #![doc(hidden)]
 
-use std::old_io::TempDir;
+use tempdir::TempDir;
 
 pub fn temp_dir() -> TempDir {
     TempDir::new("rust-earth-test").unwrap()

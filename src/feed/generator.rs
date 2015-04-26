@@ -1,6 +1,5 @@
-#![unstable]
-
 use std::fmt;
+use std::io;
 
 use html::ForHtml;
 use sanitizer::escape;
@@ -35,9 +34,9 @@ impl fmt::Display for Generator {
 impl<'a> fmt::Display for ForHtml<'a, Generator> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref uri) = self.uri {
-            try!(write!(f, "<a href=\"{}\">", escape(&uri[], false)));
+            try!(write!(f, "<a href=\"{}\">", escape(&uri, false)));
         }
-        try!(write!(f, "{}", escape(&self.value[], false)));
+        try!(write!(f, "{}", escape(&self.value, false)));
         if let Some(ref version) = self.version {
             try!(write!(f, " {}", version));
         }
@@ -49,8 +48,8 @@ impl<'a> fmt::Display for ForHtml<'a, Generator> {
 }
 
 impl FromSchemaReader for Generator {
-    fn read_from<B: Buffer>(&mut self, element: XmlElement<B>)
-                            -> DecodeResult<()>
+    fn read_from<B: io::BufRead>(&mut self, element: XmlElement<B>)
+                                 -> DecodeResult<()>
     {
         self.uri = element.get_attr("uri").ok().map(|v| v.to_string()); // TODO
         self.version = element.get_attr("version").ok().map(|v| v.to_string());

@@ -1,7 +1,5 @@
-#![unstable]
-
-use std::borrow::ToOwned;
 use std::default::Default;
+use std::io;
 use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
@@ -45,11 +43,11 @@ impl Feed {
         }
     }
 
-    pub fn new<T, S: ?Sized>(id: T, title: Text,
-                             updated_at: DateTime<FixedOffset>) -> Feed
-        where T: Deref<Target=S>, S: ToOwned<String>
+    pub fn new<T>(id: T, title: Text,
+                  updated_at: DateTime<FixedOffset>) -> Feed
+        where T: Into<String>
     {
-        Feed::new_inherited(id.to_owned(), title, updated_at)
+        Feed::new_inherited(id.into(), title, updated_at)
     }
 }
 
@@ -59,9 +57,9 @@ impl DocumentElement for Feed {
 }
 
 impl FromSchemaReader for Feed {
-    fn match_child<B: Buffer>(&mut self, name: &XmlName,
+    fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
                               child: XmlElement<B>) -> DecodeResult<()> {
-        match &name.local_name[] {
+        match &name.local_name[..] {
             "entry" => {
                 let mut entry: Entry = Default::default();
                 try!(entry.read_from(child));
@@ -124,7 +122,7 @@ mod test {
         .as_bytes())
     }
 
-    fn read_feed<B: Buffer>(buf: B) -> Feed {
+    fn read_feed<B: io::BufRead>(buf: B) -> Feed {
         let mut parser = xml::EventReader::new(buf);
         let mut events = NestedEventReader::new(&mut parser);
         let mut feed: Feed = Default::default();
