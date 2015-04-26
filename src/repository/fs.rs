@@ -176,7 +176,7 @@ mod test {
 
     use std::collections::BTreeSet;
     use std::io;
-    use std::io::USER_DIR;
+    use std::io::{Read, Write};
     use std::fs::{File, PathExt, create_dir_all};
 
     use url::Url;
@@ -199,35 +199,30 @@ mod test {
     #[cfg(windows)]
     #[test]
     fn test_file_from_to_url_on_windows() {
-        use std::old_path::windows::prefix;
-        use std::old_path::windows::PathPrefix;
+        use std::path::Component::*;
         let tmpdir = temp_dir();
         let path_str = tmpdir.path()
-            .str_components()
-            .map(|e| e.unwrap())
+            .components()
+            .filter_map(|c| match c {
+                Prefix(prefix) => Some(prefix.as_os_str()),
+                RootDir => None,
+                CurDir => Some(".".as_ref()),
+                ParentDir => Some("..".as_ref()),
+                Normal(s) => Some(s),
+            })
+            .filter_map(|s| s.to_str())
             .collect::<Vec<_>>()
             .connect("/");
-        let path_prefix_len = match prefix(tmpdir.path()) {
-            None => 0,
-            Some(PathPrefix::VerbatimPrefix(x)) => 4 + x,
-            Some(PathPrefix::VerbatimUNCPrefix(x,y)) => 8 + x + 1 + y,
-            Some(PathPrefix::VerbatimDiskPrefix) => 6,
-            Some(PathPrefix::UNCPrefix(x,y)) => 2 + x + 1 + y,
-            Some(PathPrefix::DeviceNSPrefix(x)) => 4 + x,
-            Some(PathPrefix::DiskPrefix) => 2
-        };
-        let path_prefix = &tmpdir.path().as_str()
-            .unwrap()[0..path_prefix_len];
         println!("{}", path_str);
-        let raw_url = format!("file:///{}/{}", path_prefix, path_str);
+        let raw_url = format!("file:///{}", path_str);
         let url = Url::parse(&*raw_url).unwrap();
         let fs: FsRepo = url.to_repo().unwrap();
-        assert_eq!(&fs.path, tmpdir.path());
+        assert_eq!(fs.path.as_path(), tmpdir.path());
         let u1: Url = ToRepository::from_repo(&fs, "file");
         let u2: Url = ToRepository::from_repo(&fs, "fs");
         assert_eq!(u1, url);
         assert_eq!(u2.serialize(),
-                   format!("fs:///{}/{}", path_prefix, path_str));
+                   format!("fs:///{}", path_str));
     }
 
     #[test]
@@ -240,8 +235,9 @@ mod test {
             let mut file = File::create(&tmpdir.path().join("key")).unwrap();
             write!(&mut file, "file content").unwrap();
         }
-        let content = f.get_reader(&["key"]).unwrap().read_to_end().unwrap();
-        assert_eq!(&content[], b"file content");
+        let mut content = vec![];
+        f.get_reader(&["key"]).unwrap().read_to_end(&mut content).unwrap();
+        assert_eq!(content, b"file content");
     }
 
     #[test]
@@ -251,17 +247,18 @@ mod test {
 
         expect_invalid_key!(f.get_reader, &["dir", "dir2", "key"]);
         {
-            let mut path = tmpdir.path().clone();
+            let mut path = tmpdir.path().to_path_buf();
             path.push("dir");
             path.push("dir2");
-            mkdir_recursive(&path, USER_DIR).unwrap();
+            create_dir_all(&path).unwrap();
             path.push("key");
             let mut file = File::create(&path).unwrap();
             write!(&mut file, "file content").unwrap();
         }
-        let content = f.get_reader(&["dir", "dir2", "key"]).unwrap()
-            .read_to_end().unwrap();
-        assert_eq!(&content[], b"file content");
+        let mut content = vec![];
+        f.get_reader(&["dir", "dir2", "key"]).unwrap()
+            .read_to_end(&mut content).unwrap();
+        assert_eq!(content, b"file content");
     }
 
     #[test]
@@ -273,8 +270,9 @@ mod test {
             write!(&mut w, "file ").unwrap();
             write!(&mut w, "content").unwrap();
         }
-        let content = File::open(&tmpdir.path().join("key")).unwrap()
-            .read_to_end().unwrap();
+        let mut content = vec![];
+        File::open(&tmpdir.path().join("key")).unwrap()
+            .read_to_end(&mut content).unwrap();
         assert_eq!(content, b"file content");
     }
     
@@ -288,8 +286,10 @@ mod test {
             write!(&mut w, "dark ").unwrap();
             write!(&mut w, "content").unwrap();
         }
-        let path = tmpdir.path().join_many(&["dir", "dir2", "key"]);
-        let content = File::open(&path).unwrap().read_to_end().unwrap();
+        let mut path = tmpdir.path().to_path_buf();
+        for c in &["dir", "dir2", "key"] { path.push(c); }
+        let mut content = vec![];
+        File::open(&path).unwrap().read_to_end(&mut content).unwrap();
         assert_eq!(content, b"deep dark content");
     }
 
@@ -306,7 +306,7 @@ mod test {
         let f = FsRepo::from_path(tmpdir.path(), true).unwrap();
         {
             let path = tmpdir.path().join("dir");
-            mkdir_recursive(&path, USER_DIR).unwrap();
+            create_dir_all(&path).unwrap();
             let mut file = File::create(&path.join("file")).unwrap();
             write!(&mut file, "content").unwrap();
             let mut file = File::create(&tmpdir.path().join("file")).unwrap();
@@ -324,14 +324,15 @@ mod test {
         let tmpdir = temp_dir();
         let f = FsRepo::from_path(tmpdir.path(), true).unwrap();
         let d = tmpdir.path().join("dir");
-        mkdir_recursive(&d, USER_DIR).unwrap();
+        create_dir_all(&d).unwrap();
         for i in 0..100 {
-            mkdir_recursive(&d.join(format!("d{}", i)), USER_DIR).unwrap();
+            create_dir_all(&d.join(format!("d{}", i))).unwrap();
         }
         let expected: BTreeSet<_> = (0..100)
             .map(|i| format!("d{}", i))
             .collect();
         let paths = f.list(&["dir"]).unwrap()
+            .map(|e| e.unwrap())
             .collect::<BTreeSet<_>>();
         assert_eq!(paths, expected);
     }
@@ -349,17 +350,17 @@ mod test {
         let path = tmpdir.path().join("not-exist");
         assert_err!(FsRepo::from_path(&path, false),
                     RepositoryError::Io(e) => {
-                        assert_eq!(e.kind(), io::ErrorKind::FileNotFound);
+                        assert_eq!(e.kind(), io::ErrorKind::NotFound);
                     });
         let _f = FsRepo::from_path(&path, true);
-        assert!(path.is_dir());
+        assert!(super::_is_dir(path));
     }
 
     #[test]
     fn test_not_dir() {
         let tmpdir = temp_dir();
         let path = tmpdir.path().join("not-dir.txt");
-        File::create(&path).write_all(&[]).unwrap();
+        File::create(&path).unwrap().write_all(&[]).unwrap();
         assert_err!(FsRepo::from_path(&path, false),
                     RepositoryError::NotADirectory(p) => {
                         assert_eq!(path, p);

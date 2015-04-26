@@ -64,7 +64,7 @@ impl<'a> fmt::Display for Escape<'a> {
             if let Some(quoted) = q {
                 try!(f.write_str(&self.0[last_written..i]));
                 try!(f.write_str(quoted));
-                last_written = i;
+                last_written = i + ch.len_utf8();
             }
         }
         if last_written < self.0.len() {

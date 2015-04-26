@@ -180,7 +180,7 @@ mod test {
     use super::RFC3339;
     use std::str;
     use chrono::{DateTime, FixedOffset};
-    use chrono::{Offset};
+    use chrono::{TimeZone};
     use schema::{Codec};
 
     fn sample_data() -> Vec<(&'static str, DateTime<FixedOffset>)> {

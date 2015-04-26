@@ -156,18 +156,23 @@ impl<'a, I, T> Iterator for FilterByMimeType<'a, I, T>
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        if let Some(link) = self.inner.next() {
-            let matched = if let Some(t) = link.borrow().mimetype.as_ref() {
-                match self.condition {
-                    Condition::Regex(ref r) => r.is_match(t),
-                    Condition::Simple(ref s) => s == t,
+        loop {
+            if let Some(link) = self.inner.next() {
+                let matched = if let Some(t) = link.borrow().mimetype.as_ref() {
+                    match self.condition {
+                        Condition::Regex(ref r) => r.is_match(t),
+                        Condition::Simple(ref s) => s == t,
+                    }
+                } else {
+                    false
+                };
+                if matched {
+                    return Some(link);
                 }
             } else {
-                false
-            };
-            return if matched { Some(link) } else { None };
+                return None;
+            }
         }
-        None
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -388,7 +393,7 @@ mod test {
             .collect();
         assert_eq!(result.len(), 2);
         assert_eq!(result.iter()
-                   .map(|link| &link.mimetype.as_ref().unwrap())
+                   .map(|link| &link.mimetype.as_ref().unwrap()[..])
                    .collect::<Vec<_>>(),
                    ["text/html", "text/html"]);
         let result: Vec<_> = links.iter()
@@ -396,7 +401,7 @@ mod test {
             .collect();
         assert_eq!(result.len(), 3);
         assert_eq!(result.iter()
-                   .map(|link| &link.mimetype.as_ref().unwrap())
+                   .map(|link| &link.mimetype.as_ref().unwrap()[..])
                    .collect::<Vec<_>>(),
                    ["application/json",
                     "application/xml+atom",

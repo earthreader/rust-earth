@@ -59,10 +59,11 @@ impl FromSchemaReader for Mark {
 
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod test {
     use super::Mark;
 
-    use chrono::{Offset, FixedOffset};
+    use chrono::{FixedOffset, TimeZone};
 
     fn fx_mark_true() -> Mark {
         Mark {

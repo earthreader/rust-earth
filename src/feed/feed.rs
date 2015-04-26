@@ -79,8 +79,9 @@ mod test {
     use super::Feed;
 
     use std::default::Default;
+    use std::io;
 
-    use chrono::{Offset, UTC};
+    use chrono::{TimeZone, UTC};
     use xml;
 
     use feed::{Link, Person, Text};
@@ -139,7 +140,7 @@ mod test {
     #[test]
     fn test_feed_read() {
         let feed = fx_feed();
-        assert_eq!(feed.title, Text::text("Example Feed"));
+        assert_eq!(feed.title, Text::plain("Example Feed"));
         assert_eq!(feed.links.len(), 1);
         let ref link = feed.links[0];
         assert_eq!(link.relation, "alternate");
@@ -154,26 +155,26 @@ mod test {
         assert_eq!(categories.len(), 2);
         assert_eq!(categories[0].term, "technology");
         assert_eq!(categories[1].term, "business");
-        assert_eq!(feed.rights, Some(Text::text("Public Domain")));
+        assert_eq!(feed.rights, Some(Text::plain("Public Domain")));
         let ref entries = feed.entries;
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].title,
-                   Text::text("Atom-Powered Robots Run Amok"));
-        assert_eq!(&entries[0].links[],
+                   Text::plain("Atom-Powered Robots Run Amok"));
+        assert_eq!(&entries[0].links[..],
                    [Link::new("http://example.org/2003/12/13/atom03")]);
         assert_eq!(entries[0].id,
                    "urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a");
         assert_eq!(entries[0].updated_at,
                    UTC.ymd(2003, 12, 13).and_hms(18, 30, 2));
-        assert_eq!(entries[0].summary, Some(Text::text("Some text.")));
-        assert_eq!(&entries[0].authors[], [Person::new("Jane Doe")]);
-        assert_eq!(entries[1].title, Text::text("Danger, Will Robinson!"));
-        assert_eq!(&entries[1].links[],
+        assert_eq!(entries[0].summary, Some(Text::plain("Some text.")));
+        assert_eq!(&entries[0].authors[..], [Person::new("Jane Doe")]);
+        assert_eq!(entries[1].title, Text::plain("Danger, Will Robinson!"));
+        assert_eq!(&entries[1].links[..],
                    [Link::new("http://example.org/2003/12/13/lost")]);
         assert_eq!(entries[1].id,
                    "urn:uuid:b12f2c10-ffc1-11d9-8cd6-0800200c9a66");
         assert_eq!(entries[1].updated_at,
                    UTC.ymd(2003, 12, 13).and_hms(18, 30, 2));
-        assert_eq!(entries[1].summary, Some(Text::text("Don't Panic!")));
+        assert_eq!(entries[1].summary, Some(Text::plain("Don't Panic!")));
     }
 }

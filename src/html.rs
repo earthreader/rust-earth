@@ -15,7 +15,7 @@
 //! If you want to convert the type of values to an HTML element, you can
 //! implement `std::fmt::Display` trait on the type wrapped by this adapter.
 //!
-//! ```
+//! ```ignore
 //! use earth::html::{ForHtml, ToHtml};
 //! use std::fmt;
 //!

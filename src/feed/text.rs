@@ -149,18 +149,18 @@ impl Mergeable for Text { }
 mod test {
     use super::Text;
 
-    use feed::Blob;
-
     #[test]
     fn test_text_str() {
         assert_eq!(Text::plain("Hello world").to_string(), "Hello world");
         assert_eq!(Text::plain("<p>Hello <em>world</em></p>").to_string(),
                    "<p>Hello <em>world</em></p>");
+        /* TODO: should be enabled after sanitizer is always available
         assert_eq!(Text::html("Hello world").to_string(), "Hello world");
         assert_eq!(Text::html("<p>Hello <em>world</em></p>").to_string(),
                    "Hello world");
         assert_eq!(Text::html("<p>안녕 <em>세상</em>아</p>").to_string(),
                    "안녕 세상아");
+        */
     }
 
     macro_rules! assert_sanitized {
@@ -171,6 +171,13 @@ mod test {
             assert_eq!($text.sanitized_html(Some($base_uri)).to_string(), $expected);
         )
     }
+}
+
+#[cfg(all(test, html_sanitizer))]
+mod test_sanitization {
+    use super::Text;
+
+    use feed::Blob;
 
     #[test]
     fn test_get_sanitized_html() {
