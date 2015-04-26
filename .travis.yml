@@ -1,5 +1,8 @@
 language: rust
 sudo: false
+rust:
+  - 1.0.0-beta.2
+  - nightly
 env:
   global:
     - secure: fHQhmrcupjNlpMsutG6K0+YslHSdObv72XUvsVF7iFndQs16xPJYQYxooTkyTo3QTZHkleOB3qfD0jct5JAKBbzqukTKYEVAR5fw8Qp9ZjIdhgxjL+Ap0s1c1Q+KFMQRmZNuECb7HQyTllu9V5+xy85HSd/35P51vH8imap7OTw=
