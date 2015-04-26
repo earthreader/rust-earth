@@ -185,11 +185,11 @@ mod test {
     #[test]
     fn test_file_from_to_url_on_posix() {
         let tmpdir = temp_dir();
-        let path_str = tmpdir.path().as_str().unwrap();
+        let path_str: &str = tmpdir.path().to_str().unwrap();
         let raw_url = format!("file://{}", path_str);
         let url = Url::parse(&*raw_url).unwrap();
         let fs: FsRepo = url.to_repo().unwrap();
-        assert_eq!(&fs.path, tmpdir.path());
+        assert_eq!(fs.path.as_path(), tmpdir.path());
         let u1: Url = ToRepository::from_repo(&fs, "file");
         let u2: Url = ToRepository::from_repo(&fs, "fs");
         assert_eq!(u1, url);
