@@ -98,7 +98,7 @@ impl Repository for FileSystemRepository {
         let file_res = OpenOptions::new()
             .read(false)
             .write(true)
-            .create(false)
+            .create(true)
             .truncate(true)
             .open(&path);
         let file = match file_res {

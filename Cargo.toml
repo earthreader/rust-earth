@@ -15,7 +15,7 @@ name = "earth"
 path = "src/lib.rs"
 
 [dependencies]
-chrono = {git = "https://github.com/lifthrasiir/rust-chrono.git"}
+chrono = "*"
 regex = "*"
 rustc-serialize = "*"
 tempdir = "*"
