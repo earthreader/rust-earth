@@ -88,9 +88,10 @@ impl FromSchemaReader for Option<Person> {
         *self = None;
         loop {
             match element.children.next() {
-                Some(Nested { name, element: child }) => {
+                Some(Ok(Nested { name, element: child })) => {
                     try!(self.match_child(&name, child))
                 }
+                Some(Err(e)) => { return Err(e); }
                 None => { break; }
                 Some(_) => { }     
             }

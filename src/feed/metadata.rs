@@ -86,7 +86,7 @@ impl Default for Metadata {
 impl FromSchemaReader for Metadata {
     fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
                                    child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[..]) {
+        match (name.namespace_ref(), &name.local_name[..]) {
             (Some(ATOM_XMLNS), "id") => {
                 self.id = try!(child.read_whole_text());
             }

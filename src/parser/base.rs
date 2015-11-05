@@ -4,7 +4,7 @@ use std::fmt;
 use std::io;
 
 use xml;
-use xml::reader::events::XmlEvent as x;
+use xml::reader::XmlEvent as x;
 
 use schema;
 
@@ -15,8 +15,8 @@ pub use self::events::NestedEvent;
 
 #[derive(Debug)]
 pub enum DecodeError {
-    XmlError(xml::common::Error),
-    UnexpectedEvent { event: xml::reader::events::XmlEvent, depth: usize },
+    XmlError(xml::reader::Error),
+    UnexpectedEvent { event: xml::reader::XmlEvent, depth: usize },
     NoResult,
     AttributeNotFound(String),
     SchemaError(schema::SchemaError),
@@ -62,6 +62,12 @@ impl From<schema::SchemaError> for DecodeError {
     }
 }
 
+impl From<xml::reader::Error> for DecodeError {
+    fn from(e: xml::reader::Error) -> DecodeError {
+        DecodeError::XmlError(e)
+    }
+}
+
 
 pub struct XmlElement<'a, B: io::Read + 'a> {
     pub attributes: Vec<XmlAttribute>,
@@ -82,13 +88,13 @@ impl<'a, B: io::BufRead + 'a> XmlElement<'a, B> {
     pub fn read_whole_text(mut self) -> DecodeResult<String> {
         let mut text = String::new();
         loop {
-            match self.children.next() {
-                Some(NestedEvent::Characters(s)) => { text.push_str(&s); }
-                Some(NestedEvent::Error(e)) => {
-                    return Err(DecodeError::XmlError(e));
-                }
-                Some(_) => { }
-                None => { break; }
+            let c = if let Some(c) = self.children.next() {
+                c
+            } else {
+                break;
+            };
+            if let NestedEvent::Characters(s) = try!(c) {
+                text.push_str(&s);
             }
         }
         Ok(text)
@@ -140,17 +146,19 @@ impl<'a, B: io::Read> NestedEventReader<'a, B> {
     }
 
     #[inline]
-    fn next_event(&mut self) -> x {
-        self.reader.next()
-    }
-
-    #[inline]
-    pub fn next(&mut self) -> Option<events::NestedEvent<B>> {
+    pub fn next(&mut self) -> Option<DecodeResult<events::NestedEvent<B>>> {
         if self.finished {
             None
         } else {
             use self::NestedEvent as n;
-            let ev = match self.next_event() {
+            let ev = match self.reader.next() {
+                Ok(ev) => ev,
+                Err(e) => {
+                    self.finished = true;
+                    return Some(Err(From::from(e)));
+                }
+            };
+            let ev = match ev {
                 x::StartDocument { version, encoding, standalone } =>
                 n::StartDocument { version: version,
                                    encoding: encoding,
@@ -184,13 +192,8 @@ impl<'a, B: io::Read> NestedEventReader<'a, B> {
                 x::Comment(c) => n::Comment(c),
                 x::Characters(c) => n::Characters(c),
                 x::Whitespace(c) => n::Whitespace(c),
-
-                x::Error(e) => {
-                    self.finished = true;
-                    n::Error(e)
-                }
             };
-            Some(ev)
+            Some(Ok(ev))
         }
     }
 }
@@ -205,11 +208,12 @@ impl<'a, B: io::Read + 'a> Drop for NestedEventReader<'a, B> {
         // drain all remained events
         loop {
             let mut depth = 0;
-            match self.next_event() {
-                x::EndDocument | x::Error(_) => break,
-                x::EndElement { .. } if depth <= 0 => break,
-                x::EndElement { .. } => { depth -= 1; }
-                x::StartElement { .. } => { depth += 1; }
+            match self.reader.next() {
+                Err(_) => break,
+                Ok(x::EndDocument) => break,
+                Ok(x::EndElement { .. }) if depth <= 0 => break,
+                Ok(x::EndElement { .. }) => { depth -= 1; }
+                Ok(x::StartElement { .. }) => { depth += 1; }
                 _ => { }
             }
         }
@@ -220,9 +224,8 @@ mod events {
     use std::fmt;
     use std::io;
 
-    use xml::common;
-    use xml::common::{Position, XmlVersion};
-    use xml::reader::events::XmlEvent as x;
+    use xml::common::XmlVersion;
+    use xml::reader::XmlEvent as x;
     use self::NestedEvent as n;
 
     use super::{XmlElement, XmlName};
@@ -247,7 +250,6 @@ mod events {
         Comment(String),
         Characters(String),
         Whitespace(String),
-        Error(common::Error)
     }
 
     impl<'a, B: io::Read> PartialEq<x> for NestedEvent<'a, B> {
@@ -278,7 +280,6 @@ mod events {
                 (&n::Comment(ref c1),    &x::Comment(ref c2)   ) => { c1 == c2 }
                 (&n::Characters(ref c1), &x::Characters(ref c2)) => { c1 == c2 }
                 (&n::Whitespace(ref c1), &x::Whitespace(ref c2)) => { c1 == c2 }
-                (&n::Error(ref e1),      &x::Error(ref e2)     ) => { e1 == e2 }
                 (_, _) => { false }
             }
         }
@@ -313,11 +314,6 @@ mod events {
                     write!(f, "Characters({:?})", data),
                 n::Whitespace(ref data) =>
                     write!(f, "Whitespace({:?})", data),
-                n::Error(ref e) =>
-                    write!(f, "Error(row: {}, col: {}, message: {:?})",
-                           e.position().row + 1,
-                           e.position().column + 1,
-                           e.msg())
             }
         }
     }

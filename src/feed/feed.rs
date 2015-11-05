@@ -128,7 +128,7 @@ mod test {
         let mut events = NestedEventReader::new(&mut parser);
         let mut feed: Feed = Default::default();
         for_each!(event in events.next() {
-            match event {
+            match event.unwrap() {
                 Nested { name: _, element } =>
                     FromSchemaReader::read_from(&mut feed, element).unwrap(),
                 _ => { }

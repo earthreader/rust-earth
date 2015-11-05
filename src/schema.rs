@@ -122,8 +122,11 @@ pub trait FromSchemaReader: Default + Sized {
     {
         loop {
             match element.children.next() {
-                Some(Nested { name, element }) => {
+                Some(Ok(Nested { name, element })) => {
                     try!(self.match_child(&name, element));
+                }
+                Some(Err(e)) => {
+                    return Err(e);
                 }
                 None => { break }
                 _ => { }

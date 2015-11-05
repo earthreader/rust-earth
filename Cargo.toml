@@ -22,4 +22,4 @@ tempdir = "*"
 time = "*"
 url = "*"
 xml-rs = "*"
-# html5ever = {git = "https://github.com/servo/html5ever.git"}
+# html5ever = "*"

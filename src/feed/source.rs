@@ -56,14 +56,14 @@ impl Source {
     }
 
     pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Source {
-        Source::new(id, title, updated_at)
+        Source::new_inherited(id, title, updated_at)
     }
 }
 
 impl FromSchemaReader for Source {
     fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
                                    child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[..]) {
+        match (name.namespace_ref(), &name.local_name[..]) {
             (Some(ATOM_XMLNS), "subtitle") => {
                 *set_default(&mut self.subtitle) =
                     try!(FromSchemaReader::build_from(child));

@@ -75,7 +75,7 @@ impl Entry {
     }
 
     pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
-        Entry::new(id, title, updated_at)
+        Entry::new_inherited(id, title, updated_at)
     }
 }
 
@@ -87,7 +87,7 @@ impl DocumentElement for Entry {
 impl FromSchemaReader for Entry {
     fn match_child<B: io::BufRead>(&mut self, name: &XmlName,
                                    child: XmlElement<B>) -> DecodeResult<()> {
-        match (name.namespace_as_ref(), &name.local_name[..]) {
+        match (name.namespace_ref(), &name.local_name[..]) {
             (Some(ATOM_XMLNS), "published") => {
                 self.published_at = Some(try!(parse_datetime(child)));
             }

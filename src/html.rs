@@ -50,4 +50,4 @@ pub trait ToHtml {
     fn to_html(&self) -> ForHtml<Self> { ForHtml { _inner: self } }
 }
 
-impl<'a, T> ToHtml for T where ForHtml<'a, T>: fmt::Display { }
+impl<'a, T: 'a> ToHtml for T where ForHtml<'a, T>: fmt::Display { }

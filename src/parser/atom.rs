@@ -52,10 +52,10 @@ pub fn parse_atom<B: io::BufRead>(xml: B, feed_url: &str, need_entries: bool)
     let mut events = NestedEventReader::new(&mut parser);
     let mut result = None;
     for_each!(event in events.next() {
-        match event {
+        match try!(event) {
             Nested { name, element } => {
                 let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
-                    name.namespace_as_ref().map_or(false, |n| n == atom_xmlns)
+                    name.namespace_ref().map_or(false, |n| n == atom_xmlns)
                 }).unwrap();
                 let session = {
                     let xml_base = get_xml_base(&element.attributes)
@@ -82,13 +82,13 @@ pub fn parse_atom<B: io::BufRead>(xml: B, feed_url: &str, need_entries: bool)
 
 fn get_xml_base(attributes: &[XmlAttribute]) -> Option<&str> {
     attributes.iter().find(|&attr| {
-        attr.name.namespace_as_ref().map_or(false, |ns| ns == XML_XMLNS)
+        attr.name.namespace_ref().map_or(false, |ns| ns == XML_XMLNS)
     }).map(|attr| &*attr.value)
 }
 
 fn name_matches(name: &XmlName, namespace: Option<&str>, local_name: &str) -> bool {
     &name.local_name == local_name &&
-        match (name.namespace_as_ref(), namespace) {
+        match (name.namespace_ref(), namespace) {
             (Some(a), Some(b)) => a == b,
             (None, None) => true,
             _ => false
@@ -99,7 +99,7 @@ macro_rules! parse_fields {
     { ($target:ident, $elem:expr, $session:expr)
        $($attr:pat => $var:ident : $plurality:ident by $func:expr;)* } => {
         for_each!(event in $elem.children.next() {
-            if let Nested { name, element } = event {
+            if let Nested { name, element } = try!(event) {
                 parse_field! {
                     ($target, name, element, $session)
                     $($attr => $var : $plurality by $func ;)*
@@ -136,7 +136,7 @@ fn parse_feed<B: io::BufRead>(mut element: XmlElement<B>, feed_url: &str,
                          -> DecodeResult<feed::Feed> {
     let mut feed: feed::Feed = Default::default();
     for_each!(event in element.children.next() {
-        if let Nested { name, element: child } = event {
+        if let Nested { name, element: child } = try!(event) {
             if need_entries && name_matches(&name,
                                             Some(&session.element_ns),
                                             "entry") {
@@ -245,7 +245,7 @@ fn parse_person_construct<B: io::BufRead>(mut element: XmlElement<B>,
     let mut email = Default::default();
 
     for_each!(event in element.children.next() {
-        match event {
+        match try!(event) {
             Nested { name, element: elem } => {
                 let ns = &session.element_ns;
                 if name_matches(&name, Some(ns), "name") {
