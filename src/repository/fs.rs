@@ -3,7 +3,7 @@ use super::{Names, Repository, ToRepository};
 use std::borrow::ToOwned;
 use std::io;
 use std::iter::IntoIterator;
-use std::fs::{File, OpenOptions, PathExt, create_dir_all, metadata, read_dir};
+use std::fs::{File, OpenOptions, create_dir_all, metadata, read_dir};
 use std::path::{Path, PathBuf};
 
 use url::{Url};
@@ -177,7 +177,7 @@ mod test {
     use std::collections::BTreeSet;
     use std::io;
     use std::io::{Read, Write};
-    use std::fs::{File, PathExt, create_dir_all};
+    use std::fs::{File, create_dir_all};
 
     use url::Url;
 
