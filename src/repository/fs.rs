@@ -137,10 +137,10 @@ impl Repository for FileSystemRepository {
 
 impl ToRepository<FileSystemRepository> for Url {
     fn to_repo(&self) -> super::Result<FileSystemRepository> {
-        if self.scheme != "file" {
+        if self.scheme() != "file" {
             return Err(super::Error::invalid_url(
                 "FileSystemRepository only accepts file:// scheme"));
-        } else if self.query != None || self.fragment != None {
+        } else if self.query() != None || self.fragment() != None {
             return Err(super::Error::invalid_url(
                 concat!("file:// must not contain any host/port/user/",
                         "password/parameters/query/fragment")));
@@ -154,14 +154,8 @@ impl ToRepository<FileSystemRepository> for Url {
         FileSystemRepository::from_path(&path, true)
     }
 
-    fn from_repo(repo: &FileSystemRepository, scheme: &str) -> Url {
-        match Url::from_file_path(&repo.path) {
-            Ok(mut v) => {
-                v.scheme = scheme.to_string();
-                v
-            },
-            Err(_) => unimplemented!()
-        }
+    fn from_repo(repo: &FileSystemRepository) -> Url {
+        Url::from_file_path(&repo.path).unwrap()
     }
 }
 
@@ -190,10 +184,7 @@ mod test {
         let url = Url::parse(&*raw_url).unwrap();
         let fs: FsRepo = url.to_repo().unwrap();
         assert_eq!(fs.path.as_path(), tmpdir.path());
-        let u1: Url = ToRepository::from_repo(&fs, "file");
-        let u2: Url = ToRepository::from_repo(&fs, "fs");
-        assert_eq!(u1, url);
-        assert_eq!(u2.serialize(), format!("fs://{}", path_str));
+        let u1: Url = ToRepository::from_repo(&fs);
     }
 
     #[cfg(windows)]
@@ -218,11 +209,7 @@ mod test {
         let url = Url::parse(&*raw_url).unwrap();
         let fs: FsRepo = url.to_repo().unwrap();
         assert_eq!(fs.path.as_path(), tmpdir.path());
-        let u1: Url = ToRepository::from_repo(&fs, "file");
-        let u2: Url = ToRepository::from_repo(&fs, "fs");
-        assert_eq!(u1, url);
-        assert_eq!(u2.serialize(),
-                   format!("fs:///{}", path_str));
+        let u1: Url = ToRepository::from_repo(&fs);
     }
 
     #[test]
@@ -275,7 +262,7 @@ mod test {
             .read_to_end(&mut content).unwrap();
         assert_eq!(content, b"file content");
     }
-    
+
     #[test]
     fn test_file_write_nested() {
         let tmpdir = temp_dir();
@@ -366,8 +353,8 @@ mod test {
                         assert_eq!(path, p);
                     });
     }
-    
-    
+
+
     #[test]
     fn test_filesystem_repository() {
         let tmpdir = temp_dir();

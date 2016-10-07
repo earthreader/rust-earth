@@ -127,13 +127,13 @@ mod test {
         let mut parser = xml::EventReader::new(buf);
         let mut events = NestedEventReader::new(&mut parser);
         let mut feed: Feed = Default::default();
-        for_each!(event in events.next() {
+        while let Some(event) = events.next() {
             match event.unwrap() {
                 Nested { name: _, element } =>
                     FromSchemaReader::read_from(&mut feed, element).unwrap(),
                 _ => { }
             }
-        });
+        }
         feed
     }
 

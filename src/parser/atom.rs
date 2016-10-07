@@ -51,7 +51,7 @@ pub fn parse_atom<B: io::BufRead>(xml: B, feed_url: &str, need_entries: bool)
     let mut parser = xml::EventReader::new(xml);
     let mut events = NestedEventReader::new(&mut parser);
     let mut result = None;
-    for_each!(event in events.next() {
+    while let Some(event) = events.next() {
         match try!(event) {
             Nested { name, element } => {
                 let atom_xmlns = ATOM_XMLNS_SET.iter().find(|&&atom_xmlns| {
@@ -72,7 +72,7 @@ pub fn parse_atom<B: io::BufRead>(xml: B, feed_url: &str, need_entries: bool)
             EndDocument => { panic!(); }
             _ => { }
         }
-    });
+    }
     match result {
         Some(Ok(r)) => Ok(r),
         Some(Err(e)) => Err(e),
@@ -98,14 +98,14 @@ fn name_matches(name: &XmlName, namespace: Option<&str>, local_name: &str) -> bo
 macro_rules! parse_fields {
     { ($target:ident, $elem:expr, $session:expr)
        $($attr:pat => $var:ident : $plurality:ident by $func:expr;)* } => {
-        for_each!(event in $elem.children.next() {
+        while let Some(event) = $elem.children.next() {
             if let Nested { name, element } = try!(event) {
                 parse_field! {
                     ($target, name, element, $session)
                     $($attr => $var : $plurality by $func ;)*
                 }
             }
-        })
+        }
     }
 }
 
@@ -135,7 +135,7 @@ fn parse_feed<B: io::BufRead>(mut element: XmlElement<B>, feed_url: &str,
                          need_entries: bool, session: AtomSession)
                          -> DecodeResult<feed::Feed> {
     let mut feed: feed::Feed = Default::default();
-    for_each!(event in element.children.next() {
+    while let Some(event) = element.children.next() {
         if let Nested { name, element: child } = try!(event) {
             if need_entries && name_matches(&name,
                                             Some(&session.element_ns),
@@ -162,7 +162,7 @@ fn parse_feed<B: io::BufRead>(mut element: XmlElement<B>, feed_url: &str,
                 "icon"        => icon:       optional by parse_icon;
             }
         }
-    });
+    }
 
     if feed.id.is_empty() {
         feed.id = feed_url.to_string();
@@ -244,7 +244,7 @@ fn parse_person_construct<B: io::BufRead>(mut element: XmlElement<B>,
     let mut uri = Default::default();
     let mut email = Default::default();
 
-    for_each!(event in element.children.next() {
+    while let Some(event) = element.children.next() {
         match try!(event) {
             Nested { name, element: elem } => {
                 let ns = &session.element_ns;
@@ -258,7 +258,7 @@ fn parse_person_construct<B: io::BufRead>(mut element: XmlElement<B>,
             }
             _ => { }
         }
-    });
+    }
     let name = match person_name {
         Some(n) => n,
         None => match uri.clone().or_else(|| email.clone()) {

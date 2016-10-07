@@ -158,9 +158,8 @@ pub trait ToRepository<R: Repository> {
 
     /// Generate a value that `to_repo()` can accept.
     /// It's used for configuring the repository in plain text
-    /// e.g. `*.ini`.  URL `scheme` is determined by caller,
-    /// and given through argument.
-    fn from_repo(repo: &R, scheme: &str) -> Self;
+    /// e.g. `*.ini`.
+    fn from_repo(repo: &R) -> Self;
 }
 
 mod utils {
@@ -202,7 +201,7 @@ pub mod test {
     use std::marker::PhantomData;
 
     struct RepositoryImplemented;
-    
+
     impl Repository for RepositoryImplemented {
         fn get_reader<T: AsRef<str>>(&self, _key: &[T]) ->
             super::Result<Box<io::BufRead>>
@@ -238,7 +237,7 @@ pub mod test {
             let mut reader = repository.get_reader(&["key"]).unwrap();
             let mut buf = vec![];
             assert_eq!(reader.read_to_end(&mut buf).unwrap(), 0);
-            assert_eq!(buf, vec![]);
+            assert!(buf.len() == 0);
         }
         {
             let mut writer = repository.get_writer(&["key"]).unwrap();

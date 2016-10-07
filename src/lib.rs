@@ -18,10 +18,8 @@
 #![cfg_attr(html_sanitizer, plugin(string_cache_plugin))]
 
 extern crate chrono;
-extern crate rustc_serialize as serialize;
 extern crate regex;
 extern crate tempdir;
-extern crate time;
 extern crate url;
 extern crate xml;
 
