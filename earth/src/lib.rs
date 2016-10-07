@@ -39,3 +39,4 @@ pub mod sanitizer;
 pub mod schema;
 pub mod stage;
 pub mod util;
+pub mod workbench;

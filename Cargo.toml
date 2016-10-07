@@ -1,23 +1,4 @@
-[package]
-name = "rust-earth"
-version = "0.0.2"
-authors = ["kroisse@gmail.com"]
-description = "The alternative library of libearth, the shared common library for various Earth Reader apps."
-documentation = "http://earthreader.org/rust-earth/nightly/earth/index.html"
-homepage = "http://earthreader.org/"
-repository = "https://github.com/earthreader/rust-earth"
-readme = "README.md"
-keywords = ["rss", "atom", "subscription", "sync", "web"]
-license = "GPL-2.0+"
-
-[lib]
-name = "earth"
-path = "src/lib.rs"
-
-[dependencies]
-chrono = "0.2.25"
-regex = "0.1.77"
-tempdir = "0.3.5"
-url = "1.2"
-xml-rs = "0.3.4"
-html5ever = { version = "0.5.4", optional = true }
+[workspace]
+members = [
+    "earth",
+]
