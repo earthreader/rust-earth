@@ -13,7 +13,7 @@ Links
 
 * Documentation
 
-  <http://earthreader.org/rust-earth/nightly/earth/index.html>
+  <https://docs.rs/earth/0.0.2/earth/>
 
 * Git repository (GitHub)
 
