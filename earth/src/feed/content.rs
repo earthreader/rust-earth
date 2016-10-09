@@ -1,6 +1,7 @@
 use super::Blob;
 
 use std::default::Default;
+#[cfg(feature = "html_sanitizer")] use std::fmt;
 use std::io;
 use std::str::{Utf8Error, from_utf8, from_utf8_unchecked};
 
@@ -70,11 +71,13 @@ impl Blob for Content {
     }
 }
 
-#[cfg(html_sanitizer)]
+#[cfg(feature = "html_sanitizer")]
 impl super::HtmlBlob for Content {
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
         Box<fmt::Display + 'a>
     {
+        use data_encoding::base64;
+        use sanitizer::escape;
         use sanitizer::sanitize_html;
         match self.mimetype {
             MimeType::Text =>
@@ -87,7 +90,7 @@ impl super::HtmlBlob for Content {
                 Box::new(escape(self.as_str().unwrap(), true))
                 as Box<fmt::Display>,
             _ =>
-                Box::new(self.as_bytes().to_base64(base64::MIME))
+                Box::new(base64::encode(self.as_bytes()))
                 as Box<fmt::Display>,
         }
     }

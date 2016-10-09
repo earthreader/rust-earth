@@ -7,6 +7,8 @@ use std::fmt;
 
 use mimetype::MimeType;
 
+#[cfg(feature = "html_sanitizer")] use html::ForHtml;
+#[cfg(feature = "html_sanitizer")] use sanitizer;
 use parser::base::{DecodeResult, DecodeError, XmlElement};
 use schema::{FromSchemaReader, Mergeable};
 
@@ -79,9 +81,10 @@ impl fmt::Display for Text {
     }
 }
 
-#[cfg(html_sanitizer)]
+#[cfg(feature = "html_sanitizer")]
 impl<'a> fmt::Display for ForHtml<'a, Text> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use super::HtmlBlob;
         write!(f, "{}", self.sanitized_html(None))
     }
 }
@@ -107,7 +110,7 @@ impl Blob for Text {
     }
 }
 
-#[cfg(html_sanitizer)]
+#[cfg(feature = "html_sanitizer")]
 impl super::HtmlBlob for Text {
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
         Box<fmt::Display + 'a>
@@ -162,6 +165,13 @@ mod test {
                    "안녕 세상아");
         */
     }
+}
+
+#[cfg(all(test, feature = "html_sanitizer"))]
+mod test_sanitization {
+    use super::Text;
+
+    use feed::HtmlBlob;
 
     macro_rules! assert_sanitized {
         ($text:expr, $expected:expr) => (
@@ -171,13 +181,6 @@ mod test {
             assert_eq!($text.sanitized_html(Some($base_uri)).to_string(), $expected);
         )
     }
-}
-
-#[cfg(all(test, html_sanitizer))]
-mod test_sanitization {
-    use super::Text;
-
-    use feed::Blob;
 
     #[test]
     fn test_get_sanitized_html() {
@@ -186,11 +189,9 @@ mod test_sanitization {
         let text = Text::plain("Hello\nworld");
         assert_sanitized!(text, "Hello<br>\nworld");
         let text = Text::plain("<p>Hello <em>world</em></p>");
-        assert_sanitized!(text, concat!("&lt;p&gt;Hello &lt;em&gt;",
-                                        "world&lt;/em&gt;&lt;/p&gt;"));
+        assert_sanitized!(text, "&lt;p&gt;Hello &lt;em&gt;world&lt;/em&gt;&lt;/p&gt;");
         let text = Text::plain("<p>안녕 <em>세상</em>아</p>");
-        assert_sanitized!(text, concat!("&lt;p&gt;안녕 &lt;em&gt;",
-                                        "세상&lt;/em&gt;아&lt;/p&gt;"));
+        assert_sanitized!(text, "&lt;p&gt;안녕 &lt;em&gt;세상&lt;/em&gt;아&lt;/p&gt;");
         let text = Text::html("Hello world");
         assert_sanitized!(text, "Hello world");
         let text = Text::html("<p>Hello <em>world</em></p>");
@@ -201,7 +202,6 @@ mod test_sanitization {
         assert_sanitized!(text, "<p>Hello</p><hr noshade>");
         let text = Text::html("<a href=\"/abspath\">abspath</a>");
         assert_sanitized!(text, "http://localhost/path/",
-                          concat!("<a href=\"http://localhost/abspath\">",
-                                  "abspath</a>"));
+                          "<a href=\"http://localhost/abspath\">abspath</a>");
     }
 }

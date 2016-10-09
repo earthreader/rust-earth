@@ -9,6 +9,7 @@
 //!
 //! [libearth]: https://github.com/earthreader/libearth
 //! [RFC 4287]: https://tools.ietf.org/html/rfc4287
+#[cfg(feature = "html_sanitizer")] use std::fmt;
 use std::io;
 use std::str::from_utf8;
 
@@ -61,7 +62,7 @@ pub trait Blob {
     fn as_str(&self) -> Option<&str> { from_utf8(self.as_bytes()).ok() }
 }
 
-#[cfg(html_sanitizer)]
+#[cfg(feature = "html_sanitizer")]
 pub trait HtmlBlob: Blob {
     /// Get the secure HTML string of the text.  If it's a plain text, this
     /// returns entity-escaped HTML string, if it's a HTML text, `value` is
@@ -69,11 +70,11 @@ pub trait HtmlBlob: Blob {
     /// string.
     ///
     /// ```
-    /// # use earth::feed::{Blob, Text};
-    /// let text = Text::text("<Hello>");
+    /// # use earth::feed::{HtmlBlob, Text};
+    /// let text = Text::plain("<Hello>");
     /// let html = Text::html("<script>alert(1);</script><p>Hello</p>");
-    /// assert_eq!(format!("{}", text.sanitized_html(None)), "&lt;Hello&gt;");
-    /// assert_eq!(format!("{}", html.sanitized_html(None)), "<p>Hello</p>");
+    /// assert_eq!(text.sanitized_html(None).to_string(), "&lt;Hello&gt;");
+    /// assert_eq!(html.sanitized_html(None).to_string(), "<p>Hello</p>");
     /// ```
     fn sanitized_html<'a>(&'a self, base_uri: Option<&'a str>) ->
         Box<fmt::Display + 'a>;

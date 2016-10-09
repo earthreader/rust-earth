@@ -2,8 +2,8 @@
 use std::borrow::Cow;
 use std::fmt;
 
-#[cfg(html_sanitizer)] mod html;
-#[cfg(html_sanitizer)] pub use html::{clean_html, sanitize_html};
+#[cfg(feature = "html_sanitizer")] mod html;
+#[cfg(feature = "html_sanitizer")] pub use self::html::{clean_html, sanitize_html};
 
 /// Convert given string to HTML-safe sequences by replacing the characters
 /// `&`, `<` and `>`.  If the optional `flag` quote is true, the characters `"`

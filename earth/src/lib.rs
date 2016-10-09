@@ -23,8 +23,9 @@ extern crate tempdir;
 extern crate url;
 extern crate xml;
 
-#[cfg(html_sanitizer)] extern crate html5ever;
-#[cfg(html_sanitizer)] extern crate string_cache;
+#[cfg(feature = "html_sanitizer")] extern crate data_encoding;
+#[cfg(feature = "html_sanitizer")] extern crate html5ever;
+#[cfg(feature = "html_sanitizer")] #[macro_use] extern crate string_cache;
 
 pub mod macros;
 pub mod test_utils;

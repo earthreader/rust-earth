@@ -1,15 +1,13 @@
-use std::borrow::{Cow, IntoCow, ToOwned};
 use std::default::Default;
 use std::fmt;
-use std::str::CharRange;
 
-use html5ever::tokenizer::{Attribute, Tag, TokenSink, Token};
+use html5ever::tendril::Tendril;
+use html5ever::tokenizer::{Attribute, Tag, TokenSink, Token, Tokenizer};
 use html5ever::tokenizer::{CharacterTokens, CommentToken, NullCharacterToken,
                            ParseError, TagToken};
 use html5ever::tokenizer::TagKind::{StartTag, EndTag};
-use html5ever::driver::{tokenize_to, one_input};
-use regex;
-use url::{Url, UrlParser};
+use regex::Regex;
+use url::Url;
 
 /// Strip *all* markup tags from HTML string.
 /// That means, it simply makes the given HTML document a plain text.
@@ -50,14 +48,14 @@ pub fn sanitize_html<'a>(html: &'a str, base_uri: Option<&str>) ->
     SanitizeHtml(html, base_uri.and_then(|e| Url::parse(e).ok()))
 }
 
-#[unstable]
 pub struct CleanHtml<'a>(pub &'a str);
 
 impl<'a> fmt::Display for CleanHtml<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sink = MarkupTagCleaner { w: f };
-        tokenize_to(sink, one_input(self.0.to_owned()),
-                    Default::default());
+        let mut tokenizer = Tokenizer::new(sink, Default::default());
+        tokenizer.feed(Tendril::from_slice(self.0));
+        tokenizer.run();
         Ok(())
     }
 }
@@ -79,7 +77,6 @@ impl<'a, 'b> TokenSink for MarkupTagCleaner<'a, 'b> {
     }
 }
 
-#[unstable]
 pub struct SanitizeHtml<'a>(pub &'a str, pub Option<Url>);
 
 impl<'a> fmt::Display for SanitizeHtml<'a> {
@@ -89,15 +86,16 @@ impl<'a> fmt::Display for SanitizeHtml<'a> {
             w: f,
             ignore: false,
         };
-        tokenize_to(sink, one_input(self.0.to_owned()),
-                    Default::default());
+        let mut tokenizer = Tokenizer::new(sink, Default::default());
+        tokenizer.feed(Tendril::from_slice(self.0));
+        tokenizer.run();
         Ok(())
     }
 }
 
 /// The regular expression pattern that matches to disallowed CSS properties.
 #[inline]
-fn disallowed_style_pattern() -> regex::Regex {
+fn disallowed_style_pattern() -> Regex {
     Regex::new(r#"(^|;)\s*display\s*:\s*[a-z-]+\s*(?:;\s*|$)"#).unwrap()
 }
 
@@ -137,27 +135,26 @@ fn disallowed_scheme(value: &str) -> bool {
 impl<'a, 'b> TokenSink for HtmlSanitizer<'a, 'b> {
     fn process_token(&mut self, token: Token) {
         match (self.ignore, token) {
-            (_, TagToken(Tag { kind: EndTag, name: atom!(script), .. })) => {
+            (_, TagToken(Tag { kind: EndTag, name: atom!("script"), .. })) => {
                 self.ignore = false;
             }
             (_, TagToken(Tag { kind: EndTag, name, .. })) => {
-                write!(self, "</{}>", name.as_slice());
+                write!(self, "</{}>", name);
             }
             (true, _) => { }
-            (false, TagToken(Tag { kind: StartTag, name: atom!(script), .. })) => {
+            (false, TagToken(Tag { kind: StartTag, name: atom!("script"), .. })) => {
                 self.ignore = true;
             }
             (false, TagToken(Tag { kind: StartTag, name, mut attrs, .. })) => {
-                write!(self, "<{}", name.as_slice());
+                write!(self, "<{}", name);
                 if let Some(base_uri) = self.base_uri.as_ref() {
-                    if name == atom!(a) || name == atom!(link) {
-                        let mut url_parser = UrlParser::new();
-                        let base_uri = url_parser.base_url(base_uri);
+                    if name == atom!("a") || name == atom!("link") {
+                        let base_uri = Url::options().base_url(Some(base_uri));
                         for &mut Attribute { ref name,
                                              ref mut value } in attrs.iter_mut() {
-                            if name.local == atom!(href) {
+                            if name.local == atom!("href") {
                                 match base_uri.parse(&value) {
-                                    Ok(u) => { *value = u.serialize(); }
+                                    Ok(u) => { *value = u.into_string().into(); }
                                     Err(_) => { }  // ignore malformed url
                                 }
                             }
@@ -165,18 +162,19 @@ impl<'a, 'b> TokenSink for HtmlSanitizer<'a, 'b> {
                     }
                 }
                 for Attribute { name, value } in attrs.into_iter() {
-                    write!(self, " {}", name.local.as_slice());
+                    write!(self, " {}", name.local);
                     if !value.is_empty() {
-                        let value = match name.local {
-                            atom!(href) if disallowed_scheme(&value) => {
-                                "".into_cow()
+                        match name.local {
+                            atom!("href") if disallowed_scheme(&value) => {
+                                write!(self, r#"="""#);
                             }
-                            atom!(style) => {
-                                remove_css(&value).into_cow()
+                            atom!("style") => {
+                                write!(self, r#"="{}""#, remove_css(&value));
                             }
-                            _ => value.into_cow()
+                            _ => {
+                                write!(self, r#"="{}""#, value);
+                            }
                         };
-                        write!(self, "=\"{}\"", value);
                     }
                 }
                 write!(self, ">");
