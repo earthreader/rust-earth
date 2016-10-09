@@ -1,4 +1,5 @@
-use std::default::Default;
+use chrono::{DateTime, FixedOffset, NaiveDateTime};
+
 
 pub fn get_mut_or_set<T, F>(opt: &mut Option<T>, f: F) -> &mut T
     where F: Fn() -> T
@@ -26,4 +27,11 @@ pub fn merge_vec<T, I>(base: &mut Vec<T>, data: I)
             base.push(i);
         }
     }
+}
+
+pub fn default_datetime() -> DateTime<FixedOffset> {
+    DateTime::from_utc(
+        NaiveDateTime::from_num_seconds_from_unix_epoch(0, 0),
+        FixedOffset::east(0)
+    )
 }

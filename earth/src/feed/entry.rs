@@ -1,24 +1,58 @@
 use std::borrow::Cow;
-use std::default::Default;
 use std::io;
-use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, FixedOffset};
 
 use parser::base::{DecodeResult, XmlElement, XmlName};
 use schema::{DocumentElement, Entity, FromSchemaReader, Mergeable};
+use util::{default_datetime, set_default};
 
-use util::set_default;
-
-use super::{ATOM_XMLNS, MARK_XMLNS, Content, Mark, Metadata, Source, Text,
-            parse_datetime};
+use super::{ATOM_XMLNS, MARK_XMLNS, Category, Content, Link, Mark, Person,
+            Source, Text, parse_datetime};
+use super::metadata::match_metadata_child;
 
 /// Represent an individual entry, acting as a container for metadata and data
 /// associated with the entry.  It corresponds to `atom:entry` element of
 /// :rfc:`4287#section-4.1.2` (section 4.1.2).
-#[derive(Default)]
 pub struct Entry {
-    pub metadata: Metadata,
+    /// The URI that conveys a permanent, universally unique identifier for an
+    /// entry or feed.  It corresponds to `atom:id` element of :rfc:`4287#section-4.2.6` (section 4.2.6).
+    pub id: String,
+
+    /// The human-readable title for an entry or feed.
+    /// It corresponds to `atom:title` element of :rfc:`4287#section-4.2.14` (section 4.2.14).
+    pub title: Text,
+
+    /// The list of :class:`Link` objects that define a reference from an entry
+    /// or feed to a web resource.  It corresponds to `atom:link` element of
+    /// :rfc:`4287#section-4.2.7` (section 4.2.7).
+    pub links: Vec<Link>,
+
+    /// The datetime value with a fixed timezone offset, indicating the most
+    /// recent instant in time when the entry was modified in a way the
+    /// publisher considers significant.  Therefore, not all modifications
+    /// necessarily result in a changed `updated_at` value.
+    /// It corresponds to `atom:updated` element of :rfc:`4287#section-4.2.15` (section 4.2.15).
+    pub updated_at: DateTime<FixedOffset>,
+
+    /// The list of `Person` values which indicates the author of the entry or
+    /// feed.  It corresponds to `atom:author` element of :rfc:`4287#section-4.2.1` (section 4.2.1).
+    pub authors: Vec<Person>,
+
+    /// The list of `Person` values which indicates a person or other entity
+    /// who contributed to the entry or feed.  It corresponds to
+    /// `atom:contributor` element of :rfc:`4287#section-4.2.3` (section 4.2.3).
+    pub contributors: Vec<Person>,
+
+    /// The list of `Category` values that conveys information about categories
+    /// associated with an entry or feed.  It corresponds to `atom:category`
+    /// element of :rfc:`4287#section-4.2.2` (section 4.2.2).
+    pub categories: Vec<Category>,
+
+    /// The text field that conveys information about rights held in and of an
+    /// entry or feed.  It corresponds to `atom:rights` element of
+    /// :rfc:`4287#section-4.2.10` (section 4.2.10).
+    pub rights: Option<Text>,
 
     /// The datetime value with a fixed timezone offset, indicating an instant
     /// in time associated with an event early in the life cycle of the entry.
@@ -57,25 +91,32 @@ pub struct Entry {
     pub starred: Mark,
 }
 
-impl Deref for Entry {
-    type Target = Metadata;
-    fn deref(&self) -> &Metadata { &self.metadata }
-}
-
-impl DerefMut for Entry {
-    fn deref_mut(&mut self) -> &mut Metadata { &mut self.metadata }
-}
+impl_metadata!(Entry);
 
 impl Entry {
-    pub fn new_inherited(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
+    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
         Entry {
-            metadata: Metadata::new_inherited(id, title, updated_at),
-            ..Default::default()
+            id: id,
+            title: title,
+            links: Default::default(),
+            updated_at: updated_at,
+            authors: Default::default(),
+            contributors: Default::default(),
+            categories: Default::default(),
+            rights: Default::default(),
+            published_at: Default::default(),
+            summary: Default::default(),
+            content: Default::default(),
+            source: Default::default(),
+            read: Default::default(),
+            starred: Default::default(),
         }
     }
+}
 
-    pub fn new(id: String, title: Text, updated_at: DateTime<FixedOffset>) -> Entry {
-        Entry::new_inherited(id, title, updated_at)
+impl Default for Entry {
+    fn default() -> Entry {
+        Entry::new(Default::default(), Default::default(), default_datetime())
     }
 }
 
@@ -109,7 +150,7 @@ impl FromSchemaReader for Entry {
             (Some(MARK_XMLNS), "starred") => {
                 self.starred = try!(FromSchemaReader::build_from(child));
             }
-            _ => { return self.metadata.match_child(name, child); }
+            _ => { return match_metadata_child(self, name, child); }
         }
         Ok(())
     }
@@ -117,9 +158,8 @@ impl FromSchemaReader for Entry {
 
 impl Entity for Entry {
     type Id = str;
-    fn entity_id(&self) -> Cow<str> {
-        self.metadata.entity_id()
-    }
+    fn entity_id(&self) -> Cow<str> { From::from(self.id.as_ref()) }
 }
 
-impl_mergeable!(Entry, read, starred);
+impl_mergeable!(Entry, id, title, links, updated_at, authors,
+                contributors, categories, rights, read, starred);
